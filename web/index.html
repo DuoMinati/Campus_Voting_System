@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Election Commission | Online Voting System</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Google Fonts for crisp human typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Top Official Header -->
+  <header class="official-header">
+    <div class="header-inner container">
+      <div class="branding">
+        <div class="seal-icon">🗳️</div>
+        <div>
+          <h1 class="portal-title">CAMPUS ELECTION COMMISSION</h1>
+          <p class="portal-subtitle">Departmental Student Council Election Portal &bull; Official Digital Voting System</p>
+        </div>
+      </div>
+      <div class="session-badge" id="sessionBadge">
+        <span class="status-indicator live"></span>
+        <span id="sessionStatusText">Voting Live &bull; Guest</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="main-nav">
+    <div class="nav-inner container">
+      <ul class="nav-links">
+        <li><button class="nav-btn active" data-target="homeView">🏠 Home</button></li>
+        <li><button class="nav-btn" data-target="registerView" id="navRegisterBtn">📝 Voter Registration</button></li>
+        <li><button class="nav-btn" data-target="loginView" id="navLoginBtn">🔐 Portal Login</button></li>
+        <li><button class="nav-btn" data-target="ballotView" id="navBallotBtn">🗳️ Official Ballot</button></li>
+        <li><button class="nav-btn" data-target="resultsView" id="navResultsBtn">📊 Live Standings</button></li>
+        <li><button class="nav-btn admin-only" data-target="adminView" id="navAdminBtn" style="display:none;">⚙️ Admin Console</button></li>
+      </ul>
+      <div class="nav-actions">
+        <button id="logoutBtn" class="btn-logout" style="display: none;">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-content container">
+
+    <!-- Global Alert Banner -->
+    <div id="globalNotification" class="alert-box" style="display: none;"></div>
+
+    <!-- 1. HOME VIEW -->
+    <section id="homeView" class="view-panel active">
+      <div class="hero-banner">
+        <div class="hero-text">
+          <h2>Democracy Starts with Your Vote</h2>
+          <p>Welcome to the official digital voting platform for the Campus Student Council Elections. Exercise your democratic right through a secure, verifiable, and transparent ballot.</p>
+          <div class="hero-cta">
+            <button class="btn-primary" onclick="switchView('registerView')">Register as Voter</button>
+            <button class="btn-primary" onclick="switchView('loginView')">Login to Vote</button>
+            <button class="btn-outline" onclick="switchView('resultsView')">View Standings</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <h3>Election At A Glance</h3>
+          <ul class="stat-list">
+            <li><span class="stat-label">Active Candidates:</span> <strong id="statCandidateCount">10</strong></li>
+            <li><span class="stat-label">Registered Voters:</span> <strong id="statVoterCount">0</strong></li>
+            <li><span class="stat-label">Ballots Cast:</span> <strong id="statBallotCount">0</strong></li>
+            <li><span class="stat-label">Voter Turnout:</span> <strong id="statTurnout">0.0%</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="guidelines-grid">
+        <div class="guide-card">
+          <div class="guide-icon">1️⃣</div>
+          <h4>One-Time Registration</h4>
+          <p>Provide your official 6-digit Voter ID, full name, and birth date to obtain voting credentials.</p>
+        </div>
+        <div class="guide-card">
+          <div class="guide-icon">2️⃣</div>
+          <h4>Secure Authentication</h4>
+          <p>Log in using your registered credentials. Each student may only sign in and cast one official vote.</p>
+        </div>
+        <div class="guide-card">
+          <div class="guide-icon">3️⃣</div>
+          <h4>Secret Ballot Voting</h4>
+          <p>Review candidate manifestos and confirm your choice. Votes are immediately sealed and tallied.</p>
+        </div>
+        <div class="guide-card">
+          <div class="guide-icon">4️⃣</div>
+          <h4>Transparent Results</h4>
+          <p>Watch live turnout percentages and candidate vote counts update in real-time as ballots are cast.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. REGISTRATION VIEW -->
+    <section id="registerView" class="view-panel">
+      <div class="form-container">
+        <div class="form-header">
+          <h2>Voter Registration Form</h2>
+          <p>Please enter your academic details to enroll in the digital electoral roll.</p>
+        </div>
+
+        <form id="voterRegistrationForm" novalidate>
+          <div class="form-group">
+            <label for="regFullName">Full Legal Name <span class="required">*</span></label>
+            <input type="text" id="regFullName" name="fullName" placeholder="e.g. Rahul Sharma" required />
+            <small class="field-hint">Must match your college student ID card.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="regVoterId">Voter ID (Strict 6 Digits) <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="regVoterId" 
+              name="voterId" 
+              placeholder="e.g. 101001" 
+              maxlength="6" 
+              inputmode="numeric" 
+              autocomplete="off"
+              required 
+            />
+            <small class="field-hint">Only numbers allowed (0-9). Exactly 6 digits. Alphabets and symbols are blocked.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="regDob">Date of Birth <span class="required">*</span></label>
+            <input type="date" id="regDob" name="dob" required />
+            <small class="field-hint">Select your birth date from the interactive calendar.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Account Password <span class="required">*</span></label>
+            <input type="password" id="regPassword" name="password" placeholder="Choose a secure password" minlength="4" required />
+            <small class="field-hint">Minimum 4 characters.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="regConfirmPassword">Confirm Password <span class="required">*</span></label>
+            <input type="password" id="regConfirmPassword" name="confirmPassword" placeholder="Re-enter password" required />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-block" id="btnSubmitRegistration">Complete Registration</button>
+          </div>
+        </form>
+
+        <div class="form-footer">
+          <p>Already registered? <a href="#" onclick="switchView('loginView')">Sign in here to vote</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. LOGIN VIEW -->
+    <section id="loginView" class="view-panel">
+      <div class="form-container">
+        <div class="form-header">
+          <h2>Secure Portal Login</h2>
+          <p>Access your voting ballot or administrative management console.</p>
+        </div>
+
+        <form id="portalLoginForm" novalidate>
+          <div class="form-group">
+            <label for="loginRole">Account Type <span class="required">*</span></label>
+            <select id="loginRole" name="role">
+              <option value="voter" selected>Voter / Student</option>
+              <option value="admin">Election Administrator</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="loginUserId" id="loginUserIdLabel">Voter ID (6 Digits) <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="loginUserId" 
+              name="userId" 
+              placeholder="Enter your 6-digit Voter ID" 
+              required 
+            />
+            <small class="field-hint" id="loginUserIdHint">Enter the 6-digit numeric ID generated during registration.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password <span class="required">*</span></label>
+            <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-block" id="btnSubmitLogin">Sign In & Proceed</button>
+          </div>
+        </form>
+
+        <div class="form-footer">
+          <p>Need a voting account? <a href="#" onclick="switchView('registerView')">Register as a new voter</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. OFFICIAL BALLOT VIEW -->
+    <section id="ballotView" class="view-panel">
+      <div class="ballot-header">
+        <div>
+          <h2>Official Election Ballot Paper</h2>
+          <p>Select your preferred candidate and click <strong>Vote</strong> to cast your sealed ballot.</p>
+        </div>
+        <div class="voter-status-card" id="ballotVoterStatus">
+          <span>Voter Status:</span> <strong id="ballotStatusBadge" class="badge badge-warning">Not Signed In</strong>
+        </div>
+      </div>
+
+      <!-- Voted Already Warning Banner -->
+      <div id="alreadyVotedBanner" class="alert-box alert-success" style="display: none;">
+        <strong>Notice:</strong> Your vote has already been successfully recorded in the ballot box. Under election bylaws, you cannot vote more than once.
+      </div>
+
+      <div class="candidate-grid" id="candidateListContainer">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- 5. LIVE RESULTS VIEW -->
+    <section id="resultsView" class="view-panel">
+      <div class="results-header">
+        <div>
+          <h2>Live Election Standings & Analytics</h2>
+          <p>Real-time calculation of votes cast, candidate shares, and leading contender.</p>
+        </div>
+        <button class="btn-secondary" onclick="renderLiveResults()">🔄 Refresh Standings</button>
+      </div>
+
+      <div class="results-summary-row">
+        <div class="metric-card">
+          <div class="metric-value" id="summaryTotalVotes">0</div>
+          <div class="metric-label">Total Votes Cast</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="summaryRegisteredVoters">0</div>
+          <div class="metric-label">Registered Electorate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="summaryTurnoutRate">0.0%</div>
+          <div class="metric-label">Voter Turnout</div>
+        </div>
+        <div class="metric-card leader-card">
+          <div class="metric-value highlight" id="summaryLeaderName">None</div>
+          <div class="metric-label">Current Leader</div>
+        </div>
+      </div>
+
+      <div class="results-table-container">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Affiliation / Party</th>
+              <th>Votes Received</th>
+              <th>Vote Percentage</th>
+              <th>Standing</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. ADMIN CONSOLE VIEW -->
+    <section id="adminView" class="view-panel">
+      <div class="admin-header">
+        <div>
+          <h2>Election Commission Administration</h2>
+          <p>Manage candidate nominations, inspect voter participation, and oversee election operations.</p>
+        </div>
+        <div class="admin-badge">Officer Mode</div>
+      </div>
+
+      <div class="admin-grid">
+        <!-- Candidate Nomination Form -->
+        <div class="admin-card">
+          <h3>Nominate New Candidate</h3>
+          <p class="card-caption">Add an approved student candidate to the official ballot paper.</p>
+          <form id="addCandidateForm">
+            <div class="form-group">
+              <label for="newCandidateName">Candidate Full Name <span class="required">*</span></label>
+              <input type="text" id="newCandidateName" placeholder="e.g. Priya Nair" required />
+            </div>
+            <div class="form-group">
+              <label for="newCandidateParty">Party / Council Slate <span class="required">*</span></label>
+              <input type="text" id="newCandidateParty" placeholder="e.g. Tech Pioneers / Council" required />
+            </div>
+            <div class="form-group">
+              <label for="newCandidateSymbol">Election Symbol Emoji <span class="required">*</span></label>
+              <input type="text" id="newCandidateSymbol" placeholder="e.g. 🚀, 📚, ⚡" maxlength="2" required />
+            </div>
+            <button type="submit" class="btn-primary btn-block">Add to Official Ballot</button>
+          </form>
+        </div>
+
+        <!-- System Controls -->
+        <div class="admin-card">
+          <h3>Electoral Registry Controls</h3>
+          <p class="card-caption">Perform administrative maintenance on votes and candidate slates.</p>
+          <div class="admin-actions">
+            <button class="btn-secondary btn-block" onclick="exportDataAsJSON()">📥 Export Complete Election Data (JSON)</button>
+            <button class="btn-danger btn-block" onclick="resetElectionVotes()">⚠️ Reset All Ballot Tallies</button>
+          </div>
+          <div class="admin-notice">
+            <p><strong>Administrative Notice:</strong> Official control panel for managing candidate nominees and overseeing ballot integrity.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Voter Audit Table -->
+      <div class="voter-audit-card">
+        <h3>Voter Roster & Participation Audit</h3>
+        <p class="card-caption">Inspect voter registration status and whether a ballot has been cast (voter anonymity preserved: vote choice is secret).</p>
+        <div class="table-responsive">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Voter ID</th>
+                <th>Full Name</th>
+                <th>Date of Birth</th>
+                <th>Ballot Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminVoterTableBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CONFIRM VOTE MODAL -->
+  <div id="voteConfirmModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Confirm Your Vote</h3>
+        <button class="close-modal-btn" onclick="closeConfirmModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>You are about to cast your official and final vote for:</p>
+        <div class="candidate-summary-badge" id="modalCandidateBadge">
+          <span class="badge-symbol" id="modalCandidateSymbol">🗳️</span>
+          <div>
+            <h4 id="modalCandidateName">Candidate Name</h4>
+            <p id="modalCandidateParty">Affiliation / Party</p>
+          </div>
+        </div>
+        <p class="warning-text">⚠️ <strong>Important:</strong> Under election guidelines, your vote cannot be changed or recalled once submitted.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeConfirmModal()">Go Back</button>
+        <button class="btn-primary" id="btnConfirmVoteAction">Yes, Cast My Vote</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="official-footer">
+    <div class="container footer-content">
+      <p>&copy; 2026 Campus Election Commission. Official Student Council Elections.</p>
+      <p class="footer-subtext">Secure &bull; Verifiable &bull; Transparent Electronic Voting System</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

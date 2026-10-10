@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Registration and Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>User Registration System</h1>
+
+  <section id="registerSection">
+    <h2>Register</h2>
+    <form id="registerForm">
+      <label for="regUsername">Username:</label>
+      <input type="text" id="regUsername">
+      <p id="regUsernameError" class="error"></p>
+
+      <label for="regPassword">Password:</label>
+      <input type="password" id="regPassword">
+      <p id="regPasswordError" class="error"></p>
+
+      <button type="submit">Register</button>
+    </form>
+    <p>Already registered?
+      <button type="button" id="showLogin">Go to Login</button>
+    </p>
+  </section>
+
+  <section id="loginSection" hidden>
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="loginUsername">Username:</label>
+      <input type="text" id="loginUsername">
+      <p id="loginUsernameError" class="error"></p>
+
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword">
+      <p id="loginPasswordError" class="error"></p>
+
+      <button type="submit">Login</button>
+    </form>
+    <p>Need an account?
+      <button type="button" id="showRegister">Go to Registration</button>
+    </p>
+  </section>
+
+  <p id="message"></p>
+
+  <script src="script.js"></script>
+</body>
+</html>

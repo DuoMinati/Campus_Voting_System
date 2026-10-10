@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Interactive Menu (Phases 1, 2 & 3)",
+            "request": "launch",
+            "mainClass": "Main",
+            "args": ["--cli"],
+            "projectName": "OnlineVotingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Launch Phase 3 Web Portal",
+            "request": "launch",
+            "mainClass": "Main",
+            "args": ["--web"],
+            "projectName": "OnlineVotingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Desktop Swing GUI Application",
+            "request": "launch",
+            "mainClass": "Main",
+            "projectName": "OnlineVotingSystem"
+        }
+    ]
+}
