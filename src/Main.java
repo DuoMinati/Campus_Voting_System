@@ -17,6 +17,13 @@ import java.net.URI;
 public class Main {
 
     public static void main(String[] args) {
+        // Initialize and verify MySQL database
+        try {
+            db.DBInitializer.initializeDatabase();
+        } catch (Exception e) {
+            System.err.println("Database initialization notice: " + e.getMessage());
+        }
+
         // Option 1: Direct Web Portal Launch (Phase 3)
         if (args != null && args.length > 0 && (args[0].equalsIgnoreCase("--web") || args[0].equalsIgnoreCase("--browser") || args[0].equalsIgnoreCase("-w"))) {
             launchWebPortal();

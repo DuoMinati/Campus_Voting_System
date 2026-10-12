@@ -81,4 +81,55 @@ public class CandidateDAO {
             return false;
         }
     }
+
+    // called when a ballot is deleted by admin, to decrease the candidate's total by 1
+    public boolean decrementVoteCount(int candidateId) {
+        String sql = "UPDATE candidates SET total_votes = GREATEST(0, total_votes - 1) WHERE candidate_id = ?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, candidateId);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // reset all candidate vote tallies back to 0
+    public boolean resetAllVotes() {
+        String sql = "UPDATE candidates SET total_votes = 0";
+        try (Connection con = DBConnection.getConnection();
+             Statement st = con.createStatement()) {
+            st.executeUpdate(sql);
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public Candidate getCandidateById(int candidateId) {
+        String sql = "SELECT * FROM candidates WHERE candidate_id = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, candidateId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Candidate(
+                        rs.getInt("candidate_id"),
+                        rs.getString("candidate_name"),
+                        rs.getString("party_name"),
+                        rs.getString("symbol"),
+                        rs.getInt("total_votes")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }
+

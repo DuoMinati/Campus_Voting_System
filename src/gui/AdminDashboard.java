@@ -152,12 +152,16 @@ public class AdminDashboard extends JFrame {
         rightPanel.add(formPanel, BorderLayout.NORTH);
 
         // Quick Actions
-        JPanel actionsPanel = new JPanel(new GridLayout(3, 1, 8, 8));
+        JPanel actionsPanel = new JPanel(new GridLayout(4, 1, 8, 8));
         actionsPanel.setOpaque(false);
 
         UITheme.StyledButton resultBtn = UITheme.createPrimaryButton("View Live Standings");
         resultBtn.addActionListener(e -> new ResultFrame().setVisible(true));
         actionsPanel.add(resultBtn);
+
+        UITheme.StyledButton ballotsBtn = UITheme.createPrimaryButton("Manage / Delete Ballots");
+        ballotsBtn.addActionListener(e -> openBallotManagementDialog());
+        actionsPanel.add(ballotsBtn);
 
         UITheme.StyledButton deleteBtn = UITheme.createDangerButton("Remove Candidate");
         deleteBtn.addActionListener(e -> {
@@ -229,5 +233,96 @@ public class AdminDashboard extends JFrame {
         int totalVoters = voterDAO.getTotalVoterCount();
         int totalVotesCast = voterDAO.getTotalVotesCastCount();
         statsLabel.setText("Official College Roll: " + totalVoters + " registered voters    |    Ballots Cast: " + totalVotesCast);
+    }
+
+    private void openBallotManagementDialog() {
+        JDialog dialog = new JDialog(this, "Ballot Box Ledger - Delete Single Ballot", true);
+        dialog.setSize(750, 480);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panel.setBackground(UITheme.BG_LIGHT);
+
+        JLabel header = new JLabel("Official Cast Ballots in MySQL (Select a row to delete single ballot):");
+        header.setFont(UITheme.FONT_BOLD);
+        header.setForeground(UITheme.TEXT_DARK);
+        panel.add(header, BorderLayout.NORTH);
+
+        DefaultTableModel ballotModel = new DefaultTableModel(
+                new Object[]{"Vote ID", "Voter ID", "Voter Name", "Candidate Voted For", "Party", "Timestamp"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+
+        JTable ballotTable = new JTable(ballotModel);
+        ballotTable.setRowHeight(28);
+        ballotTable.setFont(UITheme.FONT_REGULAR);
+        ballotTable.getTableHeader().setFont(UITheme.FONT_BOLD);
+
+        dao.VoteDAO voteDAO = new dao.VoteDAO();
+        Runnable reloadBallots = () -> {
+            ballotModel.setRowCount(0);
+            java.util.List<java.util.Map<String, Object>> audits = voteDAO.getAllVotesAudit();
+            for (java.util.Map<String, Object> a : audits) {
+                ballotModel.addRow(new Object[]{
+                        a.get("voteId"),
+                        a.get("voterId"),
+                        a.get("voterName"),
+                        a.get("candidateName") + " [" + a.get("candidateSymbol") + "]",
+                        a.get("candidateParty"),
+                        a.get("timestamp")
+                });
+            }
+        };
+        reloadBallots.run();
+
+        panel.add(new JScrollPane(ballotTable), BorderLayout.CENTER);
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        btnPanel.setOpaque(false);
+
+        UITheme.StyledButton deleteBallotBtn = UITheme.createDangerButton("🗑️ Delete Selected Ballot");
+        deleteBallotBtn.addActionListener(e -> {
+            int row = ballotTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(dialog, "Please select a ballot row to delete.", "Selection Required", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String voteIdStr = (String) ballotModel.getValueAt(row, 0);
+            String voterCardNo = (String) ballotModel.getValueAt(row, 1);
+            String voterName = (String) ballotModel.getValueAt(row, 2);
+            String candName = (String) ballotModel.getValueAt(row, 3);
+
+            int confirm = JOptionPane.showConfirmDialog(dialog,
+                    "Are you sure you want to delete this ballot?\n\nVoter: " + voterName + " (" + voterCardNo + ")\nVoted for: " + candName + "\n\nThis will reduce candidate vote count by 1 in MySQL and allow this voter to vote again.",
+                    "Confirm Single Ballot Deletion", JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                String cleanVoteId = voteIdStr.replaceAll("\\D", "");
+                boolean ok = voteDAO.deleteVoteByVoteId(Integer.parseInt(cleanVoteId));
+                if (ok) {
+                    JOptionPane.showMessageDialog(dialog, "Ballot deleted from MySQL! Candidate tally decreased by 1.");
+                    reloadBallots.run();
+                    loadCandidates();
+                    loadStats();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Failed to delete ballot from MySQL.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        btnPanel.add(deleteBallotBtn);
+
+        UITheme.StyledButton closeBtn = UITheme.createSecondaryButton("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        btnPanel.add(closeBtn);
+
+        panel.add(btnPanel, BorderLayout.SOUTH);
+
+        dialog.add(panel);
+        dialog.setVisible(true);
     }
 }

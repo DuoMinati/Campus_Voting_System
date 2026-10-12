@@ -35,38 +35,91 @@ public class VoterDAO {
         }
     }
 
-    // checks email + password and returns the full Voter object if matched, else null
-    public Voter login(String email, String password) {
-        String sql = "SELECT * FROM voters WHERE email = ? AND password = ?";
+    // checks (email OR voter_card_no) + password and returns Voter object if matched, else null
+    public Voter login(String identifier, String password) {
+        String sql = "SELECT * FROM voters WHERE (email = ? OR voter_card_no = ?) AND password = ?";
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setString(1, email);
-            ps.setString(2, password);
+            ps.setString(1, identifier);
+            ps.setString(2, identifier);
+            ps.setString(3, password);
 
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                Voter v = new Voter();
-                v.setVoterId(rs.getInt("voter_id"));
-                v.setFullName(rs.getString("full_name"));
-                v.setVoterCardNo(rs.getString("voter_card_no"));
-                v.setEmail(rs.getString("email"));
-                v.setPassword(rs.getString("password"));
-                try {
-                    v.setDob(rs.getString("dob"));
-                } catch (SQLException ignored) {
-                }
-                v.setAge(rs.getInt("age"));
-                v.setGender(rs.getString("gender"));
-                v.setHasVoted(rs.getBoolean("has_voted"));
-                return v;
+                return mapResultSetToVoter(rs);
             }
 
         } catch (SQLException e) {
             System.err.println("[Database Info] " + e.getMessage());
         }
         return null;
+    }
+
+    public Voter getVoterByCardNo(String voterCardNo) {
+        String sql = "SELECT * FROM voters WHERE voter_card_no = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, voterCardNo);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return mapResultSetToVoter(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+        }
+        return null;
+    }
+
+    public Voter getVoterById(int voterId) {
+        String sql = "SELECT * FROM voters WHERE voter_id = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, voterId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return mapResultSetToVoter(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+        }
+        return null;
+    }
+
+    public java.util.List<Voter> getAllVoters() {
+        java.util.List<Voter> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM voters ORDER BY voter_id";
+        try (Connection con = DBConnection.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                list.add(mapResultSetToVoter(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+        }
+        return list;
+    }
+
+    private Voter mapResultSetToVoter(ResultSet rs) throws SQLException {
+        Voter v = new Voter();
+        v.setVoterId(rs.getInt("voter_id"));
+        v.setFullName(rs.getString("full_name"));
+        v.setVoterCardNo(rs.getString("voter_card_no"));
+        v.setEmail(rs.getString("email"));
+        v.setPassword(rs.getString("password"));
+        try {
+            v.setDob(rs.getString("dob"));
+        } catch (SQLException ignored) {
+        }
+        v.setAge(rs.getInt("age"));
+        v.setGender(rs.getString("gender"));
+        v.setHasVoted(rs.getBoolean("has_voted"));
+        return v;
     }
 
     // once a voter casts their vote we flip this flag so they can never vote again
@@ -79,6 +132,61 @@ public class VoterDAO {
             ps.setInt(1, voterId);
             return ps.executeUpdate() > 0;
 
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+            return false;
+        }
+    }
+
+    // resets voter's voting status back to false (e.g. when ballot is deleted)
+    public boolean resetVotedStatus(int voterId) {
+        String sql = "UPDATE voters SET has_voted = FALSE WHERE voter_id = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, voterId);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteVoterByCardNo(String cardNo) {
+        String sql = "DELETE FROM voters WHERE voter_card_no = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, cardNo);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean deleteVoterById(int voterId) {
+        String sql = "DELETE FROM voters WHERE voter_id = ?";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, voterId);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("[Database Info] " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean resetAllVoters() {
+        String sql = "UPDATE voters SET has_voted = FALSE";
+        try (Connection con = DBConnection.getConnection();
+             Statement st = con.createStatement()) {
+            st.executeUpdate(sql);
+            return true;
         } catch (SQLException e) {
             System.err.println("[Database Info] " + e.getMessage());
             return false;

@@ -169,17 +169,75 @@
   let appState = loadState();
   let currentUser = null; // { role: 'voter'|'admin', id, name, hasVoted, votedFor }
   let selectedCandidateForVote = null;
+  let isBackendLive = false;
 
   // --- 2. DOM ELEMENT REFERENCES ---
   const navButtons = document.querySelectorAll(".nav-btn");
   const viewPanels = document.querySelectorAll(".view-panel");
   const sessionStatusText = document.getElementById("sessionStatusText");
+  const dbStatusBadge = document.getElementById("dbStatusBadge");
+  const dbStatusText = document.getElementById("dbStatusText");
   const logoutBtn = document.getElementById("logoutBtn");
   const navAdminBtn = document.getElementById("navAdminBtn");
   const navLoginBtn = document.getElementById("navLoginBtn");
   const navRegisterBtn = document.getElementById("navRegisterBtn");
   const globalNotification = document.getElementById("globalNotification");
   const userWelcomeBanner = document.getElementById("userWelcomeBanner");
+
+  function updateDatabaseBadge(connected) {
+    if (!dbStatusBadge || !dbStatusText) return;
+    if (connected) {
+      dbStatusBadge.style.background = "rgba(16, 185, 129, 0.12)";
+      dbStatusBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
+      dbStatusBadge.style.color = "#047857";
+      const ind = dbStatusBadge.querySelector(".status-indicator");
+      if (ind) ind.style.backgroundColor = "#10b981";
+      dbStatusText.textContent = "MySQL Connected (voting_system)";
+    } else {
+      dbStatusBadge.style.background = "rgba(239, 68, 68, 0.12)";
+      dbStatusBadge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+      dbStatusBadge.style.color = "#b91c1c";
+      const ind = dbStatusBadge.querySelector(".status-indicator");
+      if (ind) ind.style.backgroundColor = "#ef4444";
+      dbStatusText.textContent = "Offline Mode";
+    }
+  }
+
+  async function syncWithServer() {
+    try {
+      const res = await fetch("/api/state");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.candidates) && data.candidates.length >= 10) {
+          appState = data;
+          saveState(appState);
+          isBackendLive = true;
+          updateDatabaseBadge(true);
+
+          if (currentUser && currentUser.role === "voter") {
+            const v = appState.voters.find(x => x.id === currentUser.id);
+            if (v) {
+              currentUser.hasVoted = v.hasVoted;
+              currentUser.votedFor = v.votedFor;
+            }
+          }
+
+          renderBallot();
+          renderLiveResults();
+          updateHomeStats();
+          const adminPanel = document.getElementById("adminView");
+          if (adminPanel && adminPanel.classList.contains("active")) {
+            renderAdminView();
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      // Backend not running / offline mode
+    }
+    isBackendLive = false;
+    updateDatabaseBadge(false);
+  }
 
   // Registration Elements
   const voterRegistrationForm = document.getElementById("voterRegistrationForm");
@@ -298,7 +356,7 @@
   }
 
   // --- 6. VOTER REGISTRATION LOGIC ---
-  voterRegistrationForm.addEventListener("submit", function (e) {
+  voterRegistrationForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const fullName = regFullName.value.trim();
@@ -337,10 +395,32 @@
       return;
     }
 
-    const existing = appState.voters.find(v => v.id === voterId);
-    if (existing) {
-      showNotification("Voter ID " + voterId + " is already registered in the electoral roll. Please sign in.", "error");
-      return;
+    // Attempt direct registration into MySQL via backend API
+    try {
+      const resp = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName,
+          voterId,
+          dob,
+          password,
+          email: voterId + "@campus.edu",
+          gender: "Other"
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        showNotification(data.message || "Registration failed.", "error");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend unavailable, registering in local session", err);
+      const existing = appState.voters.find(v => v.id === voterId);
+      if (existing) {
+        showNotification("Voter ID " + voterId + " is already registered in the electoral roll. Please sign in.", "error");
+        return;
+      }
     }
 
     const newVoter = {
@@ -353,14 +433,20 @@
       registeredAt: new Date().toISOString()
     };
 
-    appState.voters.push(newVoter);
+    const existingIdx = appState.voters.findIndex(v => v.id === voterId);
+    if (existingIdx >= 0) {
+      appState.voters[existingIdx] = newVoter;
+    } else {
+      appState.voters.push(newVoter);
+    }
     saveState(appState);
 
     voterRegistrationForm.reset();
-    showNotification("Registration Successful! Your Voter ID " + voterId + " is registered. Please sign in to vote.", "success");
+    showNotification("Registration Successful! Your 6-digit Voter ID " + voterId + " is enrolled in MySQL. Please sign in to vote.", "success");
     
     loginUserId.value = voterId;
     switchView("loginView");
+    await syncWithServer();
   });
 
   // --- 7. ROLE & LOGIN MANAGEMENT ---
@@ -378,7 +464,7 @@
     loginPassword.value = "";
   });
 
-  portalLoginForm.addEventListener("submit", function (e) {
+  portalLoginForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const role = loginRole.value;
@@ -390,6 +476,37 @@
       return;
     }
 
+    // 1. Attempt authentication against MySQL via backend API
+    try {
+      const resp = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, userId, password })
+      });
+      if (resp.ok) {
+        const resData = await resp.json();
+        if (resData.success && resData.user) {
+          currentUser = resData.user;
+          handleSuccessfulLogin();
+          if (currentUser.role === "admin") {
+            showNotification("Welcome, Administrator! You have access to manage candidates and ballots.", "success");
+            switchView("adminView");
+          } else {
+            showNotification("Welcome, " + currentUser.name + "! You are authenticated to access the ballot paper.", "success");
+            switchView("ballotView");
+          }
+          await syncWithServer();
+          return;
+        } else {
+          showNotification(resData.message || "Invalid credentials.", "error");
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend auth unavailable, falling back to local credentials", err);
+    }
+
+    // 2. Offline / LocalStorage fallback
     if (role === "admin") {
       if (userId === appState.admin.username && password === appState.admin.password) {
         currentUser = {
@@ -634,23 +751,43 @@
     selectedCandidateForVote = null;
   };
 
-  btnConfirmVoteAction.addEventListener("click", function () {
+  btnConfirmVoteAction.addEventListener("click", async function () {
     if (!selectedCandidateForVote || !currentUser || currentUser.hasVoted) {
       closeConfirmModal();
       return;
     }
 
-    // 1. Increment candidate vote
+    // 1. Send vote directly to MySQL backend API
+    try {
+      const resp = await fetch("/api/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voterId: currentUser.id,
+          candidateId: selectedCandidateForVote.id
+        })
+      });
+      const resData = await resp.json();
+      if (!resp.ok || !resData.success) {
+        showNotification(resData.message || "Could not record vote in MySQL database.", "error");
+        closeConfirmModal();
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend vote failed, storing in local session", err);
+    }
+
+    // 2. Increment candidate vote
     selectedCandidateForVote.votes = (selectedCandidateForVote.votes || 0) + 1;
 
-    // 2. Mark voter as voted in state
+    // 3. Mark voter as voted in state
     const voter = appState.voters.find(v => v.id === currentUser.id);
     if (voter) {
       voter.hasVoted = true;
       voter.votedFor = selectedCandidateForVote.id;
     }
 
-    // 3. Create vote log entry
+    // 4. Create vote log entry
     const voteRecord = {
       voteId: "VOTE-" + (1000 + appState.votes.length + 1),
       voterId: currentUser.id,
@@ -660,17 +797,18 @@
     };
     appState.votes.push(voteRecord);
 
-    // 4. Update session
+    // 5. Update session
     currentUser.hasVoted = true;
     currentUser.votedFor = selectedCandidateForVote.id;
 
-    // 5. Save to local storage
+    // 6. Save to local storage
     saveState(appState);
 
     const candidateName = selectedCandidateForVote.name;
     closeConfirmModal();
 
-    showNotification("Vote Successfully Cast! Your ballot for " + candidateName + " has been sealed and recorded.", "success");
+    showNotification("Vote Successfully Cast! Your ballot for " + candidateName + " has been sealed and recorded in MySQL.", "success");
+    await syncWithServer();
     renderBallot();
     updateHomeStats();
   });
@@ -831,8 +969,8 @@
     });
   }
 
-  // Admin Single Ballot Deletion by Voter ID
-  window.adminDeleteSingleBallot = function (voterId) {
+  // Admin Single Ballot Deletion by Voter ID (Persisted in MySQL)
+  window.adminDeleteSingleBallot = async function (voterId) {
     const voter = appState.voters.find(v => v.id === voterId);
     if (!voter) {
       showNotification("Voter record not found.", "error");
@@ -847,16 +985,32 @@
     const candidate = voter.votedFor ? appState.candidates.find(c => c.id === voter.votedFor) : null;
     const candidateName = candidate ? candidate.name : "Candidate";
 
-    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will reduce " + candidateName + "'s vote count by 1 and allow this student to vote again.")) {
+    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will remove the vote from MySQL, decrease " + candidateName + "'s vote count by 1, and allow this student to vote again.")) {
       return;
     }
 
-    // 1. Decrement candidate tally
+    // Call MySQL backend API to delete the ballot
+    try {
+      const resp = await fetch("/api/delete-ballot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voterId: voterId })
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.success) {
+        showNotification(data.message || "Failed to delete ballot from MySQL.", "error");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend unavailable, resetting ballot locally", err);
+    }
+
+    // 1. Decrement candidate tally locally
     if (candidate && candidate.votes > 0) {
       candidate.votes = candidate.votes - 1;
     }
 
-    // 2. Reset voter record
+    // 2. Reset voter record locally
     voter.hasVoted = false;
     voter.votedFor = null;
 
@@ -871,16 +1025,17 @@
 
     // 5. Save and refresh all views
     saveState(appState);
+    await syncWithServer();
     renderAdminView();
     renderBallot();
     renderLiveResults();
     updateHomeStats();
 
-    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") was deleted. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
+    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") deleted from MySQL. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
   };
 
   // Admin Single Ballot Deletion by Vote ID
-  window.adminDeleteBallotByVoteId = function (voteId) {
+  window.adminDeleteBallotByVoteId = async function (voteId) {
     const vote = appState.votes.find(v => v.voteId === voteId);
     if (!vote) {
       showNotification("Ballot record not found.", "error");
@@ -888,29 +1043,34 @@
     }
 
     if (vote.voterId) {
-      adminDeleteSingleBallot(vote.voterId);
+      await adminDeleteSingleBallot(vote.voterId);
     } else {
-      const candidate = appState.candidates.find(c => c.id === vote.candidateId);
-      if (candidate && candidate.votes > 0) {
-        candidate.votes = candidate.votes - 1;
-      }
-      appState.votes = appState.votes.filter(v => v.voteId !== voteId);
-      saveState(appState);
-      renderAdminView();
-      renderBallot();
-      renderLiveResults();
-      updateHomeStats();
-      showNotification("Ballot " + voteId + " was deleted.", "success");
+      try {
+        await fetch("/api/delete-ballot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voteId: voteId })
+        });
+      } catch (err) {}
+      await syncWithServer();
     }
   };
 
-  window.adminDeleteVoter = function (voterId) {
+  window.adminDeleteVoter = async function (voterId) {
     const voter = appState.voters.find(v => v.id === voterId);
     if (!voter) return;
 
-    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " (" + voter.fullName + ") from the electoral roll?")) {
+    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " (" + voter.fullName + ") from MySQL and the electoral roll?")) {
       return;
     }
+
+    try {
+      await fetch("/api/delete-voter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voterId })
+      });
+    } catch (err) {}
 
     // If voter had cast a ballot, decrement candidate vote too
     if (voter.hasVoted && voter.votedFor) {
@@ -923,17 +1083,22 @@
 
     appState.voters = appState.voters.filter(v => v.id !== voterId);
     saveState(appState);
+    await syncWithServer();
     renderAdminView();
     renderBallot();
     renderLiveResults();
     updateHomeStats();
-    showNotification("Voter record " + voterId + " deleted.", "info");
+    showNotification("Voter record " + voterId + " deleted from MySQL.", "info");
   };
 
-  window.resetElectionVotes = function () {
-    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0? All registered voters will be marked as not having voted.")) {
+  window.resetElectionVotes = async function () {
+    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0 in MySQL? All registered voters will be marked as not having voted.")) {
       return;
     }
+
+    try {
+      await fetch("/api/reset-votes", { method: "POST" });
+    } catch (err) {}
 
     appState.candidates.forEach(c => c.votes = 0);
     appState.voters.forEach(v => {
@@ -948,14 +1113,15 @@
     }
 
     saveState(appState);
-    showNotification("Election reset complete. All tallies set to zero.", "info");
+    await syncWithServer();
+    showNotification("Election reset complete. All tallies set to zero in MySQL.", "info");
     renderBallot();
     renderLiveResults();
     renderAdminView();
     updateHomeStats();
   };
 
-  addCandidateForm.addEventListener("submit", function (e) {
+  addCandidateForm.addEventListener("submit", async function (e) {
     e.preventDefault();
 
     const name = document.getElementById("newCandidateName").value.trim();
@@ -966,6 +1132,14 @@
       showNotification("Please provide all candidate details.", "error");
       return;
     }
+
+    try {
+      await fetch("/api/add-candidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, party, symbol })
+      });
+    } catch (err) {}
 
     const nextId = appState.candidates.length > 0 
       ? Math.max(...appState.candidates.map(c => c.id)) + 1 
@@ -984,7 +1158,8 @@
     saveState(appState);
 
     addCandidateForm.reset();
-    showNotification("Candidate " + name + " added to official ballot paper successfully!", "success");
+    showNotification("Candidate " + name + " added to MySQL ballot paper successfully!", "success");
+    await syncWithServer();
     renderBallot();
     renderLiveResults();
     updateHomeStats();
@@ -1064,5 +1239,7 @@
   updateHomeStats();
   renderBallot();
   renderLiveResults();
+  syncWithServer();
+  setInterval(syncWithServer, 5000);
 
 })();

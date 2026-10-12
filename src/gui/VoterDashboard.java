@@ -129,9 +129,24 @@ public class VoterDashboard extends JFrame {
 
         mainPanel.add(bottomBar, BorderLayout.SOUTH);
 
-        // Check if already voted
+        // Check if already voted - retrieve whom the voter voted for from database
         if (voter.isHasVoted()) {
-            disableVoting(candidatesListPanel, "✓ You have already cast your official vote in this election.");
+            dao.VoteDAO voteDAO = new dao.VoteDAO();
+            model.Candidate votedForCand = voteDAO.getVotedCandidateForVoter(voter.getVoterId());
+            String votedMsg = "✓ You have cast your official ballot in this election.";
+            if (votedForCand != null) {
+                votedMsg = "✓ Your Recorded Ballot: Voted for " + votedForCand.getCandidateName() 
+                        + " (" + votedForCand.getPartyName() + ") [" + votedForCand.getSymbol() + "]";
+                // Highlight the candidate radio button
+                for (java.util.Enumeration<AbstractButton> buttons = candidateGroup.getElements(); buttons.hasMoreElements(); ) {
+                    AbstractButton btn = buttons.nextElement();
+                    if ((int) btn.getClientProperty("candidateId") == votedForCand.getCandidateId()) {
+                        btn.setSelected(true);
+                        break;
+                    }
+                }
+            }
+            disableVoting(candidatesListPanel, votedMsg);
         }
 
         add(mainPanel);

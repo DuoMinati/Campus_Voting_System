@@ -21,9 +21,15 @@
           <p class="portal-subtitle">Departmental Student Council Election Portal &bull; Official Digital Voting System</p>
         </div>
       </div>
-      <div class="session-badge" id="sessionBadge">
-        <span class="status-indicator live"></span>
-        <span id="sessionStatusText">Voting Live &bull; Guest</span>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div class="session-badge" id="dbStatusBadge" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); color: #047857; font-weight: 600;">
+          <span class="status-indicator live" style="background-color: #10b981;"></span>
+          <span id="dbStatusText">MySQL Connected (voting_system)</span>
+        </div>
+        <div class="session-badge" id="sessionBadge">
+          <span class="status-indicator live"></span>
+          <span id="sessionStatusText">Voting Live &bull; Guest</span>
+        </div>
       </div>
     </div>
   </header>

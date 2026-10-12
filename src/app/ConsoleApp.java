@@ -429,7 +429,7 @@ public class ConsoleApp {
     private static void handleVoterLogin() {
         System.out.println("\n--- Voter Login ---");
         try {
-            System.out.print("Email    : ");
+            System.out.print("Email or 6-digit Voter ID : ");
             String email = scanner.nextLine();
 
             System.out.print("Password : ");
