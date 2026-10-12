@@ -53,6 +53,9 @@
 
     <!-- 1. HOME VIEW -->
     <section id="homeView" class="view-panel active">
+      <!-- User Welcome & Voting Status Banner -->
+      <div id="userWelcomeBanner" class="alert-box alert-success" style="display: none; margin-bottom: 24px;"></div>
+
       <div class="hero-banner">
         <div class="hero-text">
           <h2>Democracy Starts with Your Vote</h2>
@@ -213,10 +216,8 @@
         </div>
       </div>
 
-      <!-- Voted Already Warning Banner -->
-      <div id="alreadyVotedBanner" class="alert-box alert-success" style="display: none;">
-        <strong>Notice:</strong> Your vote has already been successfully recorded in the ballot box. Under election bylaws, you cannot vote more than once.
-      </div>
+      <!-- Voted Already Warning Banner & Candidate Receipt -->
+      <div id="alreadyVotedBanner" style="display: none;"></div>
 
       <div class="candidate-grid" id="candidateListContainer">
         <!-- Rendered dynamically by app.js -->
@@ -319,7 +320,7 @@
       <!-- Voter Audit Table -->
       <div class="voter-audit-card">
         <h3>Voter Roster & Participation Audit</h3>
-        <p class="card-caption">Inspect voter registration status and whether a ballot has been cast (voter anonymity preserved: vote choice is secret).</p>
+        <p class="card-caption">Inspect voter registration status and whether a ballot has been cast. Admin can delete a voter account or reset an individual ballot.</p>
         <div class="table-responsive">
           <table class="results-table">
             <thead>
@@ -332,6 +333,28 @@
               </tr>
             </thead>
             <tbody id="adminVoterTableBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Cast Ballots Audit & Single Ballot Deletion Table -->
+      <div class="voter-audit-card admin-subcard">
+        <h3>Ballot Box Audit & Individual Ballot Deletion</h3>
+        <p class="card-caption">Inspect and manage individual ballots cast into the electronic ballot box. Admin can delete any single ballot, which decrements the candidate's vote count by 1 and re-enables voting for that voter.</p>
+        <div class="table-responsive">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Ballot ID</th>
+                <th>Voter ID & Name</th>
+                <th>Candidate Voted For</th>
+                <th>Timestamp</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminBallotTableBody">
               <!-- Rendered via JS -->
             </tbody>
           </table>

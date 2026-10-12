@@ -7,7 +7,7 @@
   "use strict";
 
   // --- 1. LOCAL STORAGE & DATA INITIALIZATION (ALL VOTES ZERO, 10 PARTICIPANTS) ---
-  const STORAGE_KEY = "campus_voting_system_data_v3";
+  const STORAGE_KEY = "campus_voting_system_data_v4";
 
   const DEFAULT_DATA = {
     candidates: [
@@ -151,7 +151,6 @@
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Verify valid structure and candidate count
         if (parsed && Array.isArray(parsed.candidates) && parsed.candidates.length >= 10) {
           return parsed;
         }
@@ -159,7 +158,6 @@
     } catch (e) {
       console.warn("Could not parse existing state, resetting to default", e);
     }
-    // Clean slate with 10 candidates and all votes set to 0
     saveState(DEFAULT_DATA);
     return JSON.parse(JSON.stringify(DEFAULT_DATA));
   }
@@ -169,7 +167,7 @@
   }
 
   let appState = loadState();
-  let currentUser = null; // { role: 'voter'|'admin', id, name, hasVoted }
+  let currentUser = null; // { role: 'voter'|'admin', id, name, hasVoted, votedFor }
   let selectedCandidateForVote = null;
 
   // --- 2. DOM ELEMENT REFERENCES ---
@@ -181,6 +179,7 @@
   const navLoginBtn = document.getElementById("navLoginBtn");
   const navRegisterBtn = document.getElementById("navRegisterBtn");
   const globalNotification = document.getElementById("globalNotification");
+  const userWelcomeBanner = document.getElementById("userWelcomeBanner");
 
   // Registration Elements
   const voterRegistrationForm = document.getElementById("voterRegistrationForm");
@@ -214,6 +213,7 @@
   // Admin Elements
   const addCandidateForm = document.getElementById("addCandidateForm");
   const adminVoterTableBody = document.getElementById("adminVoterTableBody");
+  const adminBallotTableBody = document.getElementById("adminBallotTableBody");
 
   // --- 3. VIEW SWITCHER ---
   window.switchView = function (targetViewId) {
@@ -396,7 +396,8 @@
           role: "admin",
           id: "admin",
           name: "System Administrator",
-          hasVoted: false
+          hasVoted: false,
+          votedFor: null
         };
         handleSuccessfulLogin();
         showNotification("Welcome, Administrator! You have access to manage candidates and ballots.", "success");
@@ -411,7 +412,8 @@
           role: "voter",
           id: voter.id,
           name: voter.fullName,
-          hasVoted: voter.hasVoted
+          hasVoted: voter.hasVoted,
+          votedFor: voter.votedFor || null
         };
         handleSuccessfulLogin();
         showNotification("Welcome, " + voter.fullName + "! You are authenticated to access the ballot paper.", "success");
@@ -424,7 +426,7 @@
 
   function handleSuccessfulLogin() {
     portalLoginForm.reset();
-    sessionStatusText.textContent = currentUser.name + " (" + (currentUser.role === "admin" ? "Admin" : "Voter") + ")";
+    updateSessionStatusBadge();
     logoutBtn.style.display = "inline-block";
     navLoginBtn.style.display = "none";
     navRegisterBtn.style.display = "none";
@@ -438,6 +440,27 @@
     updateHomeStats();
   }
 
+  function updateSessionStatusBadge() {
+    if (!currentUser) {
+      sessionStatusText.textContent = "Voting Live • Guest";
+      return;
+    }
+
+    if (currentUser.role === "admin") {
+      sessionStatusText.textContent = currentUser.name + " (Admin)";
+      return;
+    }
+
+    // Voter session text
+    const voter = appState.voters.find(v => v.id === currentUser.id);
+    if (voter && voter.hasVoted && voter.votedFor) {
+      const cand = appState.candidates.find(c => c.id === voter.votedFor);
+      sessionStatusText.textContent = currentUser.name + " (Voter) • Voted: " + (cand ? cand.name + " " + (cand.symbol || "") : "Ballot Cast");
+    } else {
+      sessionStatusText.textContent = currentUser.name + " (Voter) • Awaiting Vote";
+    }
+  }
+
   logoutBtn.addEventListener("click", function () {
     currentUser = null;
     sessionStatusText.textContent = "Voting Live • Guest";
@@ -445,15 +468,35 @@
     navLoginBtn.style.display = "inline-flex";
     navRegisterBtn.style.display = "inline-flex";
     navAdminBtn.style.display = "none";
+    if (userWelcomeBanner) {
+      userWelcomeBanner.style.display = "none";
+    }
 
     showNotification("You have been signed out safely.", "info");
     switchView("homeView");
   });
 
-  // --- 8. OFFICIAL BALLOT RENDERING & VOTING ---
+  // --- 8. OFFICIAL BALLOT RENDERING & VOTING (SHOWING USER VOTED CHOICE) ---
   function renderBallot() {
     candidateListContainer.innerHTML = "";
 
+    // Sync current voter state with appState
+    let voterRecord = null;
+    if (currentUser && currentUser.role === "voter") {
+      voterRecord = appState.voters.find(v => v.id === currentUser.id);
+      if (voterRecord) {
+        currentUser.hasVoted = voterRecord.hasVoted;
+        currentUser.votedFor = voterRecord.votedFor || null;
+      }
+    }
+
+    const hasUserVoted = voterRecord ? voterRecord.hasVoted : false;
+    const votedCandidateId = voterRecord ? voterRecord.votedFor : null;
+    const votedCandidate = votedCandidateId ? appState.candidates.find(c => c.id === votedCandidateId) : null;
+
+    updateSessionStatusBadge();
+
+    // Update status badge and Receipt Banner
     if (!currentUser) {
       ballotStatusBadge.textContent = "Not Signed In (Sign in to Vote)";
       ballotStatusBadge.className = "badge badge-warning";
@@ -462,28 +505,75 @@
       ballotStatusBadge.textContent = "Logged in as Admin (Viewing Ballot)";
       ballotStatusBadge.className = "badge badge-warning";
       alreadyVotedBanner.style.display = "none";
-    } else if (currentUser.hasVoted) {
+    } else if (hasUserVoted && votedCandidate) {
+      ballotStatusBadge.textContent = "Ballot Sealed • Voted for " + votedCandidate.name + " " + (votedCandidate.symbol || "");
+      ballotStatusBadge.className = "badge badge-success";
+
+      // Render Rich Voted Receipt Card
+      alreadyVotedBanner.className = "user-voted-receipt";
+      alreadyVotedBanner.style.display = "block";
+      alreadyVotedBanner.innerHTML = `
+        <div class="receipt-header">
+          <div class="receipt-icon">🗳️</div>
+          <div>
+            <h3>Your Official Recorded Vote</h3>
+            <p>Your sealed ballot has been successfully recorded in the electronic ballot box.</p>
+          </div>
+        </div>
+        <div class="voted-candidate-box">
+          <div class="voted-candidate-left">
+            <div class="voted-symbol-lg">${votedCandidate.symbol || "🗳️"}</div>
+            <div class="voted-candidate-details">
+              <h4>${escapeHtml(votedCandidate.name)}</h4>
+              <div class="voted-candidate-party">${escapeHtml(votedCandidate.party)}</div>
+            </div>
+          </div>
+          <span class="badge badge-success">✓ Verified & Sealed Ballot</span>
+        </div>
+        <p class="receipt-note">
+          <span>🔒</span> Under election bylaws, one-voter-one-vote is strictly enforced. Your vote cannot be changed.
+        </p>
+      `;
+    } else if (hasUserVoted) {
+      // Fallback if candidate data is missing
       ballotStatusBadge.textContent = "Ballot Already Submitted (Voted)";
       ballotStatusBadge.className = "badge badge-success";
+      alreadyVotedBanner.className = "alert-box alert-success";
       alreadyVotedBanner.style.display = "block";
+      alreadyVotedBanner.innerHTML = "<strong>Notice:</strong> Your vote has been recorded in the ballot box. One voter, one vote is strictly enforced.";
     } else {
       ballotStatusBadge.textContent = "Eligible to Vote: " + currentUser.name;
       ballotStatusBadge.className = "badge badge-success";
       alreadyVotedBanner.style.display = "none";
     }
 
+    // Render Candidate Cards
     appState.candidates.forEach(candidate => {
       const card = document.createElement("div");
-      card.className = "candidate-card";
+      const isChosenCandidate = hasUserVoted && votedCandidateId === candidate.id;
 
-      const canVote = currentUser && currentUser.role === "voter" && !currentUser.hasVoted;
-      const buttonLabel = (!currentUser) 
-        ? "Sign In to Vote" 
-        : (currentUser.role === "admin") 
-          ? "Admin View Only" 
-          : (currentUser.hasVoted) 
-            ? "Already Voted" 
-            : "Vote for " + candidate.name;
+      card.className = "candidate-card" + (isChosenCandidate ? " card-voted-for" : "");
+
+      const canVote = currentUser && currentUser.role === "voter" && !hasUserVoted;
+
+      let buttonLabel = "";
+      let buttonClass = "btn-vote";
+
+      if (!currentUser) {
+        buttonLabel = "Sign In to Vote";
+      } else if (currentUser.role === "admin") {
+        buttonLabel = "Admin View Only";
+      } else if (hasUserVoted) {
+        if (isChosenCandidate) {
+          buttonLabel = "✓ You Voted for " + candidate.name;
+          buttonClass = "btn-vote btn-voted-choice";
+        } else {
+          buttonLabel = "Not Selected";
+          buttonClass = "btn-vote btn-not-selected";
+        }
+      } else {
+        buttonLabel = "Vote for " + candidate.name;
+      }
 
       card.innerHTML = `
         <div>
@@ -498,7 +588,7 @@
         </div>
         <div class="candidate-action">
           <button 
-            class="btn-vote" 
+            class="${buttonClass}" 
             ${!canVote ? "disabled" : ""} 
             onclick="promptVoteConfirmation(${candidate.id})">
             ${buttonLabel}
@@ -522,7 +612,8 @@
       return;
     }
 
-    if (currentUser.hasVoted) {
+    const voter = appState.voters.find(v => v.id === currentUser.id);
+    if (voter && voter.hasVoted) {
       showNotification("You have already cast your vote! One-voter-one-vote is strictly enforced.", "error");
       return;
     }
@@ -559,9 +650,10 @@
       voter.votedFor = selectedCandidateForVote.id;
     }
 
-    // 3. Create masked vote log entry (preserving ballot secrecy)
+    // 3. Create vote log entry
     const voteRecord = {
       voteId: "VOTE-" + (1000 + appState.votes.length + 1),
+      voterId: currentUser.id,
       candidateId: selectedCandidateForVote.id,
       maskedVoterId: currentUser.id.slice(0, 2) + "****",
       timestamp: new Date().toISOString()
@@ -570,6 +662,7 @@
 
     // 4. Update session
     currentUser.hasVoted = true;
+    currentUser.votedFor = selectedCandidateForVote.id;
 
     // 5. Save to local storage
     saveState(appState);
@@ -653,9 +746,10 @@
 
   window.renderLiveResults = renderLiveResults;
 
-  // --- 10. ADMIN CONSOLE MANAGEMENT ---
+  // --- 10. ADMIN CONSOLE MANAGEMENT (INDIVIDUAL BALLOT DELETION) ---
   function renderAdminView() {
     renderAdminVoters();
+    renderAdminBallots();
   }
 
   function renderAdminVoters() {
@@ -667,23 +761,199 @@
     }
 
     appState.voters.forEach(voter => {
+      const candidateVoted = voter.votedFor ? appState.candidates.find(c => c.id === voter.votedFor) : null;
       const tr = document.createElement("tr");
+
+      let statusBadge = "";
+      let actionButtons = "";
+
+      if (voter.hasVoted) {
+        const cName = candidateVoted ? candidateVoted.name : "Recorded";
+        statusBadge = `<span class="badge badge-success">Ballot Cast (${escapeHtml(cName)})</span>`;
+        actionButtons = `
+          <div class="table-action-group">
+            <button class="btn-sm btn-warning" onclick="adminDeleteSingleBallot('${voter.id}')">🗑️ Delete Ballot</button>
+            <button class="btn-sm btn-secondary" onclick="adminDeleteVoter('${voter.id}')">Delete Voter</button>
+          </div>
+        `;
+      } else {
+        statusBadge = `<span class="badge badge-warning">Awaiting Vote</span>`;
+        actionButtons = `
+          <button class="btn-sm btn-secondary" onclick="adminDeleteVoter('${voter.id}')">Delete Voter</button>
+        `;
+      }
+
       tr.innerHTML = `
         <td><code>${escapeHtml(voter.id)}</code></td>
         <td><strong>${escapeHtml(voter.fullName)}</strong></td>
         <td>${escapeHtml(voter.dob)}</td>
-        <td>
-          ${voter.hasVoted 
-            ? '<span class="badge badge-success">Ballot Cast</span>' 
-            : '<span class="badge badge-warning">Awaiting Vote</span>'}
-        </td>
-        <td>
-          <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="adminDeleteVoter('${voter.id}')">Delete</button>
-        </td>
+        <td>${statusBadge}</td>
+        <td>${actionButtons}</td>
       `;
       adminVoterTableBody.appendChild(tr);
     });
   }
+
+  function renderAdminBallots() {
+    if (!adminBallotTableBody) return;
+    adminBallotTableBody.innerHTML = "";
+
+    if (appState.votes.length === 0) {
+      adminBallotTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding: 20px;">No ballots have been cast in the ballot box yet.</td></tr>`;
+      return;
+    }
+
+    appState.votes.forEach(vote => {
+      const candidate = appState.candidates.find(c => c.id === vote.candidateId);
+      const voter = appState.voters.find(v => v.id === vote.voterId);
+
+      const candidateDisplay = candidate 
+        ? `${candidate.symbol || "🗳️"} ${escapeHtml(candidate.name)} <small style="color:#2563eb; display:block;">(${escapeHtml(candidate.party)})</small>`
+        : `Candidate #${vote.candidateId}`;
+
+      const voterDisplay = voter 
+        ? `<strong>${escapeHtml(voter.fullName)}</strong> <small style="color:#64748b; display:block;">ID: ${escapeHtml(voter.id)}</small>`
+        : `Voter <code>${escapeHtml(vote.voterId || vote.maskedVoterId)}</code>`;
+
+      const formattedTime = vote.timestamp ? new Date(vote.timestamp).toLocaleString() : "Just now";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><code>${escapeHtml(vote.voteId)}</code></td>
+        <td>${voterDisplay}</td>
+        <td>${candidateDisplay}</td>
+        <td><small style="color:#475569;">${formattedTime}</small></td>
+        <td>
+          <button class="btn-sm btn-danger" onclick="adminDeleteBallotByVoteId('${vote.voteId}')">🗑️ Delete Ballot</button>
+        </td>
+      `;
+      adminBallotTableBody.appendChild(tr);
+    });
+  }
+
+  // Admin Single Ballot Deletion by Voter ID
+  window.adminDeleteSingleBallot = function (voterId) {
+    const voter = appState.voters.find(v => v.id === voterId);
+    if (!voter) {
+      showNotification("Voter record not found.", "error");
+      return;
+    }
+
+    if (!voter.hasVoted) {
+      showNotification("This voter has not cast a ballot yet.", "info");
+      return;
+    }
+
+    const candidate = voter.votedFor ? appState.candidates.find(c => c.id === voter.votedFor) : null;
+    const candidateName = candidate ? candidate.name : "Candidate";
+
+    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will reduce " + candidateName + "'s vote count by 1 and allow this student to vote again.")) {
+      return;
+    }
+
+    // 1. Decrement candidate tally
+    if (candidate && candidate.votes > 0) {
+      candidate.votes = candidate.votes - 1;
+    }
+
+    // 2. Reset voter record
+    voter.hasVoted = false;
+    voter.votedFor = null;
+
+    // 3. Remove vote log from appState.votes
+    appState.votes = appState.votes.filter(v => v.voterId !== voterId);
+
+    // 4. If current logged in user is this voter, reset their active session
+    if (currentUser && currentUser.id === voterId) {
+      currentUser.hasVoted = false;
+      currentUser.votedFor = null;
+    }
+
+    // 5. Save and refresh all views
+    saveState(appState);
+    renderAdminView();
+    renderBallot();
+    renderLiveResults();
+    updateHomeStats();
+
+    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") was deleted. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
+  };
+
+  // Admin Single Ballot Deletion by Vote ID
+  window.adminDeleteBallotByVoteId = function (voteId) {
+    const vote = appState.votes.find(v => v.voteId === voteId);
+    if (!vote) {
+      showNotification("Ballot record not found.", "error");
+      return;
+    }
+
+    if (vote.voterId) {
+      adminDeleteSingleBallot(vote.voterId);
+    } else {
+      const candidate = appState.candidates.find(c => c.id === vote.candidateId);
+      if (candidate && candidate.votes > 0) {
+        candidate.votes = candidate.votes - 1;
+      }
+      appState.votes = appState.votes.filter(v => v.voteId !== voteId);
+      saveState(appState);
+      renderAdminView();
+      renderBallot();
+      renderLiveResults();
+      updateHomeStats();
+      showNotification("Ballot " + voteId + " was deleted.", "success");
+    }
+  };
+
+  window.adminDeleteVoter = function (voterId) {
+    const voter = appState.voters.find(v => v.id === voterId);
+    if (!voter) return;
+
+    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " (" + voter.fullName + ") from the electoral roll?")) {
+      return;
+    }
+
+    // If voter had cast a ballot, decrement candidate vote too
+    if (voter.hasVoted && voter.votedFor) {
+      const cand = appState.candidates.find(c => c.id === voter.votedFor);
+      if (cand && cand.votes > 0) {
+        cand.votes = cand.votes - 1;
+      }
+      appState.votes = appState.votes.filter(v => v.voterId !== voterId);
+    }
+
+    appState.voters = appState.voters.filter(v => v.id !== voterId);
+    saveState(appState);
+    renderAdminView();
+    renderBallot();
+    renderLiveResults();
+    updateHomeStats();
+    showNotification("Voter record " + voterId + " deleted.", "info");
+  };
+
+  window.resetElectionVotes = function () {
+    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0? All registered voters will be marked as not having voted.")) {
+      return;
+    }
+
+    appState.candidates.forEach(c => c.votes = 0);
+    appState.voters.forEach(v => {
+      v.hasVoted = false;
+      v.votedFor = null;
+    });
+    appState.votes = [];
+
+    if (currentUser && currentUser.role === "voter") {
+      currentUser.hasVoted = false;
+      currentUser.votedFor = null;
+    }
+
+    saveState(appState);
+    showNotification("Election reset complete. All tallies set to zero.", "info");
+    renderBallot();
+    renderLiveResults();
+    renderAdminView();
+    updateHomeStats();
+  };
 
   addCandidateForm.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -720,42 +990,6 @@
     updateHomeStats();
   });
 
-  window.adminDeleteVoter = function (voterId) {
-    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " from the electoral roll?")) {
-      return;
-    }
-
-    appState.voters = appState.voters.filter(v => v.id !== voterId);
-    saveState(appState);
-    renderAdminVoters();
-    updateHomeStats();
-    showNotification("Voter record " + voterId + " deleted.", "info");
-  };
-
-  window.resetElectionVotes = function () {
-    if (!confirm("Are you sure you want to reset all ballot tallies to 0? All registered voters will be marked as not having voted.")) {
-      return;
-    }
-
-    appState.candidates.forEach(c => c.votes = 0);
-    appState.voters.forEach(v => {
-      v.hasVoted = false;
-      v.votedFor = null;
-    });
-    appState.votes = [];
-
-    if (currentUser && currentUser.role === "voter") {
-      currentUser.hasVoted = false;
-    }
-
-    saveState(appState);
-    showNotification("Election reset complete. All tallies set to zero.", "info");
-    renderBallot();
-    renderLiveResults();
-    renderAdminVoters();
-    updateHomeStats();
-  };
-
   window.exportDataAsJSON = function () {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
     const dlAnchorElem = document.createElement("a");
@@ -765,7 +999,7 @@
     showNotification("Election database exported as campus_voting_system_export.json", "success");
   };
 
-  // --- 11. HOME STATS SUMMARY ---
+  // --- 11. HOME STATS SUMMARY & WELCOME BANNER ---
   function updateHomeStats() {
     const totalVotes = appState.candidates.reduce((sum, c) => sum + (c.votes || 0), 0);
     const registeredCount = appState.voters.length;
@@ -780,6 +1014,40 @@
     if (statVoterCount) statVoterCount.textContent = registeredCount;
     if (statBallotCount) statBallotCount.textContent = totalVotes;
     if (statTurnout) statTurnout.textContent = turnoutPct + "%";
+
+    // Personalized Welcome Banner on Home Screen
+    if (userWelcomeBanner) {
+      if (currentUser && currentUser.role === "voter") {
+        const voter = appState.voters.find(v => v.id === currentUser.id);
+        const hasVoted = voter ? voter.hasVoted : false;
+        const cand = (voter && voter.votedFor) ? appState.candidates.find(c => c.id === voter.votedFor) : null;
+
+        userWelcomeBanner.style.display = "flex";
+        if (hasVoted && cand) {
+          userWelcomeBanner.className = "alert-box alert-success";
+          userWelcomeBanner.innerHTML = `
+            <span>✅</span>
+            <div>
+              <strong>Welcome, ${escapeHtml(currentUser.name)}!</strong> 
+              Your official vote has been cast for <strong>${escapeHtml(cand.name)}</strong> (${escapeHtml(cand.party)}). 
+              <a href="#" onclick="switchView('ballotView')" style="font-weight:700; margin-left:8px; text-decoration:underline;">View Your Ballot &rarr;</a>
+            </div>
+          `;
+        } else {
+          userWelcomeBanner.className = "alert-box alert-info";
+          userWelcomeBanner.innerHTML = `
+            <span>🗳️</span>
+            <div>
+              <strong>Welcome, ${escapeHtml(currentUser.name)}!</strong> 
+              You are eligible to vote. 
+              <a href="#" onclick="switchView('ballotView')" style="font-weight:700; margin-left:8px; text-decoration:underline;">Click here to cast your ballot &rarr;</a>
+            </div>
+          `;
+        }
+      } else {
+        userWelcomeBanner.style.display = "none";
+      }
+    }
   }
 
   function escapeHtml(text) {
