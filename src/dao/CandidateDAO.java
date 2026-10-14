@@ -50,11 +50,16 @@ public class CandidateDAO {
              ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
+                String manifesto = "";
+                try {
+                    manifesto = rs.getString("manifesto");
+                } catch (SQLException ignored) {}
                 Candidate c = new Candidate(
                         rs.getInt("candidate_id"),
                         rs.getString("candidate_name"),
                         rs.getString("party_name"),
                         rs.getString("symbol"),
+                        manifesto,
                         rs.getInt("total_votes")
                 );
                 list.add(c);
@@ -118,11 +123,16 @@ public class CandidateDAO {
             ps.setInt(1, candidateId);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
+                String manifesto = "";
+                try {
+                    manifesto = rs.getString("manifesto");
+                } catch (SQLException ignored) {}
                 return new Candidate(
                         rs.getInt("candidate_id"),
                         rs.getString("candidate_name"),
                         rs.getString("party_name"),
                         rs.getString("symbol"),
+                        manifesto,
                         rs.getInt("total_votes")
                 );
             }

@@ -9,16 +9,22 @@ public class Candidate {
     private String candidateName;
     private String partyName;
     private String symbol;
+    private String manifesto;
     private int totalVotes;
 
     public Candidate() {
     }
 
     public Candidate(int candidateId, String candidateName, String partyName, String symbol, int totalVotes) {
+        this(candidateId, candidateName, partyName, symbol, "", totalVotes);
+    }
+
+    public Candidate(int candidateId, String candidateName, String partyName, String symbol, String manifesto, int totalVotes) {
         this.candidateId = candidateId;
         this.candidateName = candidateName;
         this.partyName = partyName;
         this.symbol = symbol;
+        this.manifesto = manifesto;
         this.totalVotes = totalVotes;
     }
 
@@ -52,6 +58,14 @@ public class Candidate {
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+    }
+
+    public String getManifesto() {
+        return manifesto;
+    }
+
+    public void setManifesto(String manifesto) {
+        this.manifesto = manifesto;
     }
 
     public int getTotalVotes() {

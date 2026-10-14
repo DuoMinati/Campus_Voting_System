@@ -199,7 +199,7 @@ public class EmbeddedWebServer {
                     handleResetVotes(exchange);
                 } else if ("/api/status".equals(path)) {
                     boolean connected = db.DBConnection.testConnection();
-                    sendJson(exchange, 200, "{\"dbConnected\":" + connected + ",\"message\":\"" + (connected ? "Connected to MySQL database [voting_system]" : "MySQL unavailable") + "\"}");
+                    sendJson(exchange, 200, "{\"dbConnected\":" + connected + ",\"message\":\"" + (connected ? "Connected to database" : "Database offline") + "\"}");
                 } else {
                     sendJson(exchange, 404, "{\"error\":\"Endpoint not found\"}");
                 }
@@ -227,8 +227,11 @@ public class EmbeddedWebServer {
                 sb.append("\"id\":").append(c.getCandidateId()).append(",");
                 sb.append("\"name\":\"").append(escapeJson(c.getCandidateName())).append("\",");
                 sb.append("\"party\":\"").append(escapeJson(c.getPartyName())).append("\",");
-                sb.append("\"symbol\":\"").append(escapeJson(c.getSymbol())).append("\",");
-                sb.append("\"manifesto\":\"Advocating for campus welfare, transparent governance, and student community progress.\",");
+                String man = c.getManifesto();
+                if (man == null || man.trim().isEmpty()) {
+                    man = "Advocating for campus welfare, transparent governance, and student community progress.";
+                }
+                sb.append("\"manifesto\":\"").append(escapeJson(man)).append("\",");
                 sb.append("\"votes\":").append(c.getTotalVotes());
                 sb.append("}");
             }
@@ -324,7 +327,7 @@ public class EmbeddedWebServer {
             boolean inserted = voterDAO.registerVoter(voter);
 
             if (inserted) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Voter registered in MySQL\",\"voterId\":\"" + voterId + "\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Voter registered successfully\",\"voterId\":\"" + voterId + "\"}");
             } else {
                 sendJson(exchange, 500, "{\"success\":false,\"message\":\"Database insertion failed. Email or ID may already exist.\"}");
             }
@@ -396,7 +399,7 @@ public class EmbeddedWebServer {
 
             boolean ok = voteDAO.castVote(v.getVoterId(), candidateId);
             if (ok) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Vote recorded successfully in MySQL database.\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Vote recorded successfully.\"}");
             } else {
                 sendJson(exchange, 500, "{\"success\":false,\"message\":\"Database transaction failed to record vote.\"}");
             }
@@ -421,7 +424,7 @@ public class EmbeddedWebServer {
             }
 
             if (ok) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Ballot deleted from MySQL and candidate count updated.\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Ballot deleted and candidate count updated.\"}");
             } else {
                 sendJson(exchange, 400, "{\"success\":false,\"message\":\"Could not locate or delete the ballot record.\"}");
             }
@@ -440,7 +443,7 @@ public class EmbeddedWebServer {
             }
 
             if (ok) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Voter profile removed from MySQL.\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Voter profile removed.\"}");
             } else {
                 sendJson(exchange, 400, "{\"success\":false,\"message\":\"Could not delete voter.\"}");
             }
@@ -458,7 +461,7 @@ public class EmbeddedWebServer {
 
             boolean ok = candidateDAO.addCandidate(name, party, symbol);
             if (ok) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Candidate added to MySQL.\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"Candidate added successfully.\"}");
             } else {
                 sendJson(exchange, 500, "{\"success\":false,\"message\":\"Could not insert candidate into database.\"}");
             }
@@ -467,9 +470,9 @@ public class EmbeddedWebServer {
         private void handleResetVotes(HttpExchange exchange) throws IOException {
             boolean ok = voteDAO.resetAllVotes();
             if (ok) {
-                sendJson(exchange, 200, "{\"success\":true,\"message\":\"All votes reset to zero in MySQL.\"}");
+                sendJson(exchange, 200, "{\"success\":true,\"message\":\"All votes reset to zero.\"}");
             } else {
-                sendJson(exchange, 500, "{\"success\":false,\"message\":\"Failed to reset votes in MySQL.\"}");
+                sendJson(exchange, 500, "{\"success\":false,\"message\":\"Failed to reset votes.\"}");
             }
         }
 

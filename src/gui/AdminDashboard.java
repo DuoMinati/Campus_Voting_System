@@ -244,7 +244,7 @@ public class AdminDashboard extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         panel.setBackground(UITheme.BG_LIGHT);
 
-        JLabel header = new JLabel("Official Cast Ballots in MySQL (Select a row to delete single ballot):");
+        JLabel header = new JLabel("Official Cast Ballots (Select a row to delete single ballot):");
         header.setFont(UITheme.FONT_BOLD);
         header.setForeground(UITheme.TEXT_DARK);
         panel.add(header, BorderLayout.NORTH);
@@ -298,19 +298,19 @@ public class AdminDashboard extends JFrame {
             String candName = (String) ballotModel.getValueAt(row, 3);
 
             int confirm = JOptionPane.showConfirmDialog(dialog,
-                    "Are you sure you want to delete this ballot?\n\nVoter: " + voterName + " (" + voterCardNo + ")\nVoted for: " + candName + "\n\nThis will reduce candidate vote count by 1 in MySQL and allow this voter to vote again.",
+                    "Are you sure you want to delete this ballot?\n\nVoter: " + voterName + " (" + voterCardNo + ")\nVoted for: " + candName + "\n\nThis will reduce candidate vote count by 1 and allow this voter to vote again.",
                     "Confirm Single Ballot Deletion", JOptionPane.YES_NO_OPTION);
 
             if (confirm == JOptionPane.YES_OPTION) {
                 String cleanVoteId = voteIdStr.replaceAll("\\D", "");
                 boolean ok = voteDAO.deleteVoteByVoteId(Integer.parseInt(cleanVoteId));
                 if (ok) {
-                    JOptionPane.showMessageDialog(dialog, "Ballot deleted from MySQL! Candidate tally decreased by 1.");
+                    JOptionPane.showMessageDialog(dialog, "Ballot deleted! Candidate tally decreased by 1.");
                     reloadBallots.run();
                     loadCandidates();
                     loadStats();
                 } else {
-                    JOptionPane.showMessageDialog(dialog, "Failed to delete ballot from MySQL.", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(dialog, "Failed to delete ballot.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });

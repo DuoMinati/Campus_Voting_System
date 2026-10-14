@@ -175,8 +175,6 @@
   const navButtons = document.querySelectorAll(".nav-btn");
   const viewPanels = document.querySelectorAll(".view-panel");
   const sessionStatusText = document.getElementById("sessionStatusText");
-  const dbStatusBadge = document.getElementById("dbStatusBadge");
-  const dbStatusText = document.getElementById("dbStatusText");
   const logoutBtn = document.getElementById("logoutBtn");
   const navAdminBtn = document.getElementById("navAdminBtn");
   const navLoginBtn = document.getElementById("navLoginBtn");
@@ -184,38 +182,18 @@
   const globalNotification = document.getElementById("globalNotification");
   const userWelcomeBanner = document.getElementById("userWelcomeBanner");
 
-  function updateDatabaseBadge(connected) {
-    if (!dbStatusBadge || !dbStatusText) return;
-    if (connected) {
-      dbStatusBadge.style.background = "rgba(16, 185, 129, 0.12)";
-      dbStatusBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-      dbStatusBadge.style.color = "#047857";
-      const ind = dbStatusBadge.querySelector(".status-indicator");
-      if (ind) ind.style.backgroundColor = "#10b981";
-      dbStatusText.textContent = "MySQL Connected (voting_system)";
-    } else {
-      dbStatusBadge.style.background = "rgba(239, 68, 68, 0.12)";
-      dbStatusBadge.style.borderColor = "rgba(239, 68, 68, 0.4)";
-      dbStatusBadge.style.color = "#b91c1c";
-      const ind = dbStatusBadge.querySelector(".status-indicator");
-      if (ind) ind.style.backgroundColor = "#ef4444";
-      dbStatusText.textContent = "Offline Mode";
-    }
-  }
-
   async function syncWithServer() {
     try {
       const res = await fetch("/api/state");
       if (res.ok) {
         const data = await res.json();
-        if (data && Array.isArray(data.candidates) && data.candidates.length >= 10) {
+        if (data && Array.isArray(data.candidates) && data.candidates.length > 0) {
           appState = data;
           saveState(appState);
           isBackendLive = true;
-          updateDatabaseBadge(true);
 
           if (currentUser && currentUser.role === "voter") {
-            const v = appState.voters.find(x => x.id === currentUser.id);
+            const v = appState.voters.find(x => String(x.id) === String(currentUser.id));
             if (v) {
               currentUser.hasVoted = v.hasVoted;
               currentUser.votedFor = v.votedFor;
@@ -233,10 +211,9 @@
         }
       }
     } catch (e) {
-      // Backend not running / offline mode
+      // Backend offline / static preview mode
     }
     isBackendLive = false;
-    updateDatabaseBadge(false);
   }
 
   // Registration Elements
@@ -442,7 +419,7 @@
     saveState(appState);
 
     voterRegistrationForm.reset();
-    showNotification("Registration Successful! Your 6-digit Voter ID " + voterId + " is enrolled in MySQL. Please sign in to vote.", "success");
+    showNotification("Registration Successful! Your 6-digit Voter ID " + voterId + " is enrolled. Please sign in to vote.", "success");
     
     loginUserId.value = voterId;
     switchView("loginView");
@@ -600,7 +577,7 @@
     // Sync current voter state with appState
     let voterRecord = null;
     if (currentUser && currentUser.role === "voter") {
-      voterRecord = appState.voters.find(v => v.id === currentUser.id);
+      voterRecord = appState.voters.find(v => String(v.id) === String(currentUser.id));
       if (voterRecord) {
         currentUser.hasVoted = voterRecord.hasVoted;
         currentUser.votedFor = voterRecord.votedFor || null;
@@ -609,7 +586,7 @@
 
     const hasUserVoted = voterRecord ? voterRecord.hasVoted : false;
     const votedCandidateId = voterRecord ? voterRecord.votedFor : null;
-    const votedCandidate = votedCandidateId ? appState.candidates.find(c => c.id === votedCandidateId) : null;
+    const votedCandidate = votedCandidateId != null ? appState.candidates.find(c => String(c.id) === String(votedCandidateId)) : null;
 
     updateSessionStatusBadge();
 
@@ -667,7 +644,7 @@
     // Render Candidate Cards
     appState.candidates.forEach(candidate => {
       const card = document.createElement("div");
-      const isChosenCandidate = hasUserVoted && votedCandidateId === candidate.id;
+      const isChosenCandidate = hasUserVoted && String(votedCandidateId) === String(candidate.id);
 
       card.className = "candidate-card" + (isChosenCandidate ? " card-voted-for" : "");
 
@@ -769,7 +746,7 @@
       });
       const resData = await resp.json();
       if (!resp.ok || !resData.success) {
-        showNotification(resData.message || "Could not record vote in MySQL database.", "error");
+        showNotification(resData.message || "Could not record vote.", "error");
         closeConfirmModal();
         return;
       }
@@ -807,7 +784,7 @@
     const candidateName = selectedCandidateForVote.name;
     closeConfirmModal();
 
-    showNotification("Vote Successfully Cast! Your ballot for " + candidateName + " has been sealed and recorded in MySQL.", "success");
+    showNotification("Vote Successfully Cast! Your ballot for " + candidateName + " has been sealed and recorded.", "success");
     await syncWithServer();
     renderBallot();
     updateHomeStats();
@@ -899,7 +876,7 @@
     }
 
     appState.voters.forEach(voter => {
-      const candidateVoted = voter.votedFor ? appState.candidates.find(c => c.id === voter.votedFor) : null;
+      const candidateVoted = voter.votedFor ? appState.candidates.find(c => String(c.id) === String(voter.votedFor)) : null;
       const tr = document.createElement("tr");
 
       let statusBadge = "";
@@ -942,8 +919,8 @@
     }
 
     appState.votes.forEach(vote => {
-      const candidate = appState.candidates.find(c => c.id === vote.candidateId);
-      const voter = appState.voters.find(v => v.id === vote.voterId);
+      const candidate = appState.candidates.find(c => String(c.id) === String(vote.candidateId));
+      const voter = appState.voters.find(v => String(v.id) === String(vote.voterId));
 
       const candidateDisplay = candidate 
         ? `${candidate.symbol || "🗳️"} ${escapeHtml(candidate.name)} <small style="color:#2563eb; display:block;">(${escapeHtml(candidate.party)})</small>`
@@ -969,9 +946,9 @@
     });
   }
 
-  // Admin Single Ballot Deletion by Voter ID (Persisted in MySQL)
+  // Admin Single Ballot Deletion by Voter ID
   window.adminDeleteSingleBallot = async function (voterId) {
-    const voter = appState.voters.find(v => v.id === voterId);
+    const voter = appState.voters.find(v => String(v.id) === String(voterId));
     if (!voter) {
       showNotification("Voter record not found.", "error");
       return;
@@ -982,14 +959,14 @@
       return;
     }
 
-    const candidate = voter.votedFor ? appState.candidates.find(c => c.id === voter.votedFor) : null;
+    const candidate = voter.votedFor ? appState.candidates.find(c => String(c.id) === String(voter.votedFor)) : null;
     const candidateName = candidate ? candidate.name : "Candidate";
 
-    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will remove the vote from MySQL, decrease " + candidateName + "'s vote count by 1, and allow this student to vote again.")) {
+    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will remove the vote, decrease " + candidateName + "'s vote count by 1, and allow this student to vote again.")) {
       return;
     }
 
-    // Call MySQL backend API to delete the ballot
+    // Call backend API to delete the ballot
     try {
       const resp = await fetch("/api/delete-ballot", {
         method: "POST",
@@ -998,7 +975,7 @@
       });
       const data = await resp.json();
       if (!resp.ok || !data.success) {
-        showNotification(data.message || "Failed to delete ballot from MySQL.", "error");
+        showNotification(data.message || "Failed to delete ballot.", "error");
         return;
       }
     } catch (err) {
@@ -1015,10 +992,10 @@
     voter.votedFor = null;
 
     // 3. Remove vote log from appState.votes
-    appState.votes = appState.votes.filter(v => v.voterId !== voterId);
+    appState.votes = appState.votes.filter(v => String(v.voterId) !== String(voterId));
 
     // 4. If current logged in user is this voter, reset their active session
-    if (currentUser && currentUser.id === voterId) {
+    if (currentUser && String(currentUser.id) === String(voterId)) {
       currentUser.hasVoted = false;
       currentUser.votedFor = null;
     }
@@ -1031,7 +1008,7 @@
     renderLiveResults();
     updateHomeStats();
 
-    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") deleted from MySQL. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
+    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") deleted. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
   };
 
   // Admin Single Ballot Deletion by Vote ID
@@ -1057,10 +1034,10 @@
   };
 
   window.adminDeleteVoter = async function (voterId) {
-    const voter = appState.voters.find(v => v.id === voterId);
+    const voter = appState.voters.find(v => String(v.id) === String(voterId));
     if (!voter) return;
 
-    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " (" + voter.fullName + ") from MySQL and the electoral roll?")) {
+    if (!confirm("Are you sure you want to remove Voter ID " + voterId + " (" + voter.fullName + ") from the electoral roll?")) {
       return;
     }
 
@@ -1074,25 +1051,25 @@
 
     // If voter had cast a ballot, decrement candidate vote too
     if (voter.hasVoted && voter.votedFor) {
-      const cand = appState.candidates.find(c => c.id === voter.votedFor);
+      const cand = appState.candidates.find(c => String(c.id) === String(voter.votedFor));
       if (cand && cand.votes > 0) {
         cand.votes = cand.votes - 1;
       }
-      appState.votes = appState.votes.filter(v => v.voterId !== voterId);
+      appState.votes = appState.votes.filter(v => String(v.voterId) !== String(voterId));
     }
 
-    appState.voters = appState.voters.filter(v => v.id !== voterId);
+    appState.voters = appState.voters.filter(v => String(v.id) !== String(voterId));
     saveState(appState);
     await syncWithServer();
     renderAdminView();
     renderBallot();
     renderLiveResults();
     updateHomeStats();
-    showNotification("Voter record " + voterId + " deleted from MySQL.", "info");
+    showNotification("Voter record " + voterId + " deleted.", "info");
   };
 
   window.resetElectionVotes = async function () {
-    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0 in MySQL? All registered voters will be marked as not having voted.")) {
+    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0? All registered voters will be marked as not having voted.")) {
       return;
     }
 
@@ -1114,7 +1091,7 @@
 
     saveState(appState);
     await syncWithServer();
-    showNotification("Election reset complete. All tallies set to zero in MySQL.", "info");
+    showNotification("Election reset complete. All tallies set to zero.", "info");
     renderBallot();
     renderLiveResults();
     renderAdminView();
@@ -1158,7 +1135,7 @@
     saveState(appState);
 
     addCandidateForm.reset();
-    showNotification("Candidate " + name + " added to MySQL ballot paper successfully!", "success");
+    showNotification("Candidate " + name + " added to official ballot paper successfully!", "success");
     await syncWithServer();
     renderBallot();
     renderLiveResults();
@@ -1193,9 +1170,9 @@
     // Personalized Welcome Banner on Home Screen
     if (userWelcomeBanner) {
       if (currentUser && currentUser.role === "voter") {
-        const voter = appState.voters.find(v => v.id === currentUser.id);
+        const voter = appState.voters.find(v => String(v.id) === String(currentUser.id));
         const hasVoted = voter ? voter.hasVoted : false;
-        const cand = (voter && voter.votedFor) ? appState.candidates.find(c => c.id === voter.votedFor) : null;
+        const cand = (voter && voter.votedFor != null) ? appState.candidates.find(c => String(c.id) === String(voter.votedFor)) : null;
 
         userWelcomeBanner.style.display = "flex";
         if (hasVoted && cand) {
