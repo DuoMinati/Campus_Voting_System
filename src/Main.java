@@ -41,7 +41,7 @@ public class Main {
     }
 
     public static void launchWebPortal() {
-        System.out.println("Starting Online Voting System Web Portal (Phase 3)...");
+        System.out.println("Starting Online Voting System Web Portal...");
         int port = EmbeddedWebServer.start("web", 8080);
         if (port != -1) {
             String url = "http://localhost:" + port + "/";

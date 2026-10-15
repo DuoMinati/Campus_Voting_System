@@ -1,9 +1,7 @@
-# Online Voting System
-### Java + MySQL | MCA Mini Project
+# Campus Election Commission - Online Voting System
+### Enterprise-Grade Electronic Voting & Election Management Platform (Java & Web)
 
-A simple desktop application (Java Swing + JDBC + MySQL) that lets a
-college simulate an election - voters register, log in, and vote once;
-an admin manages candidates and watches the results come in live.
+A comprehensive digital election system engineered with Java (Swing & Embedded HTTP Server), MySQL, and a modern Web Portal. Supports student voter registration, identity validation, secret ballot casting, real-time vote tallying, individual ballot revocation, and live analytical standings.
 
 ---
 

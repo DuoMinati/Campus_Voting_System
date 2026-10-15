@@ -73,7 +73,7 @@ INSERT INTO voters (voter_id, full_name, voter_card_no, email, password, dob, ag
 (2, 'Pooja Deshmukh', '101002', 'pooja@campus.edu', 'voter123', '22-03-2002', 24, 'Female', FALSE),
 (3, 'Aakash Banerjee', '101003', 'aakash@campus.edu', 'voter123', '05-11-2001', 24, 'Male', FALSE),
 (4, 'Neha Sharma', '101004', 'neha@campus.edu', 'voter123', '19-01-2002', 24, 'Female', FALSE),
-(5, 'Jyotirmoy', '101005', 'jyotirmoy@campus.edu', 'voter123', '10-07-2001', 25, 'Male', FALSE);
+(5, 'Kavita Rao', '101005', 'kavita@campus.edu', 'voter123', '10-07-2001', 24, 'Female', FALSE);
 
 -- ------------------------------------------------------------
 -- 4. VOTES TABLE
@@ -97,11 +97,11 @@ CREATE TABLE votes (
 -- ------------------------------------------------------------
 CREATE TABLE election_status (
     id INT PRIMARY KEY DEFAULT 1,
-    election_title VARCHAR(150) DEFAULT 'MCA College Election 2026',
+    election_title VARCHAR(150) DEFAULT 'Campus Student Council Election 2026',
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-INSERT INTO election_status (id, election_title, is_active) VALUES (1, 'MCA College Election 2026', TRUE);
+INSERT INTO election_status (id, election_title, is_active) VALUES (1, 'Campus Student Council Election 2026', TRUE);
 
 -- ------------------------------------------------------------
 -- quick check

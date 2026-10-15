@@ -159,7 +159,7 @@ public class AdminDashboard extends JFrame {
         resultBtn.addActionListener(e -> new ResultFrame().setVisible(true));
         actionsPanel.add(resultBtn);
 
-        UITheme.StyledButton ballotsBtn = UITheme.createPrimaryButton("Manage / Delete Ballots");
+        UITheme.StyledButton ballotsBtn = UITheme.createPrimaryButton("Audit & Manage Ballots");
         ballotsBtn.addActionListener(e -> openBallotManagementDialog());
         actionsPanel.add(ballotsBtn);
 
@@ -284,11 +284,11 @@ public class AdminDashboard extends JFrame {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
         btnPanel.setOpaque(false);
 
-        UITheme.StyledButton deleteBallotBtn = UITheme.createDangerButton("🗑️ Delete Selected Ballot");
+        UITheme.StyledButton deleteBallotBtn = UITheme.createDangerButton("Revoke Selected Ballot");
         deleteBallotBtn.addActionListener(e -> {
             int row = ballotTable.getSelectedRow();
             if (row == -1) {
-                JOptionPane.showMessageDialog(dialog, "Please select a ballot row to delete.", "Selection Required", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Please select a ballot row to revoke.", "Selection Required", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -298,19 +298,25 @@ public class AdminDashboard extends JFrame {
             String candName = (String) ballotModel.getValueAt(row, 3);
 
             int confirm = JOptionPane.showConfirmDialog(dialog,
-                    "Are you sure you want to delete this ballot?\n\nVoter: " + voterName + " (" + voterCardNo + ")\nVoted for: " + candName + "\n\nThis will reduce candidate vote count by 1 and allow this voter to vote again.",
-                    "Confirm Single Ballot Deletion", JOptionPane.YES_NO_OPTION);
+                    "Confirm Ballot Revocation:\n\nAre you sure you want to revoke the ballot for " + voterName + " (" + voterCardNo + ")?\nCandidate Voted: " + candName + "\n\nThis will remove the vote from the ballot box and allow the student to vote again.",
+                    "Confirm Ballot Revocation", JOptionPane.YES_NO_OPTION);
 
             if (confirm == JOptionPane.YES_OPTION) {
-                String cleanVoteId = voteIdStr.replaceAll("\\D", "");
-                boolean ok = voteDAO.deleteVoteByVoteId(Integer.parseInt(cleanVoteId));
-                if (ok) {
-                    JOptionPane.showMessageDialog(dialog, "Ballot deleted! Candidate tally decreased by 1.");
-                    reloadBallots.run();
-                    loadCandidates();
-                    loadStats();
-                } else {
-                    JOptionPane.showMessageDialog(dialog, "Failed to delete ballot.", "Error", JOptionPane.ERROR_MESSAGE);
+                String cleanVoteId = voteIdStr != null ? voteIdStr.replaceAll("\\D", "") : "";
+                if (!cleanVoteId.isEmpty()) {
+                    try {
+                        boolean ok = voteDAO.deleteVoteByVoteId(Integer.parseInt(cleanVoteId));
+                        if (ok) {
+                            JOptionPane.showMessageDialog(dialog, "Ballot revoked successfully! Candidate tally updated and voter is eligible to revote.", "Revocation Successful", JOptionPane.INFORMATION_MESSAGE);
+                            reloadBallots.run();
+                            loadCandidates();
+                            loadStats();
+                        } else {
+                            JOptionPane.showMessageDialog(dialog, "Failed to revoke ballot.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (NumberFormatException nfe) {
+                        JOptionPane.showMessageDialog(dialog, "Invalid ballot reference format.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
             }
         });

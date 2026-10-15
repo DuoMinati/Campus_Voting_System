@@ -35,7 +35,7 @@ public class DBInitializer {
             {"Pooja Deshmukh", "101002", "pooja@campus.edu", "voter123", "22-03-2002", 24, "Female"},
             {"Aakash Banerjee", "101003", "aakash@campus.edu", "voter123", "05-11-2001", 24, "Male"},
             {"Neha Sharma", "101004", "neha@campus.edu", "voter123", "19-01-2002", 24, "Female"},
-            {"Jyotirmoy", "101005", "jyotirmoy@campus.edu", "voter123", "10-07-2001", 25, "Male"}
+            {"Kavita Rao", "101005", "kavita@campus.edu", "voter123", "10-07-2001", 24, "Female"}
     };
 
     public static synchronized boolean initializeDatabase() {

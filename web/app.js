@@ -131,7 +131,7 @@
       },
       {
         id: "101005",
-        fullName: "Jyotirmoy",
+        fullName: "Kavita Rao",
         dob: "2001-07-10",
         password: "voter123",
         hasVoted: false,
@@ -304,7 +304,7 @@
 
       if (!/^[0-9]$/.test(e.key)) {
         e.preventDefault();
-        showNotification("Voter ID accepts strictly digits (0-9). Characters like '" + e.key + "' are not permitted.", "error");
+        showNotification("Please enter numbers only (0-9) for your 6-digit Voter ID.", "error");
       }
     });
 
@@ -355,7 +355,7 @@
     }
 
     if (!dob) {
-      showNotification("Please select your Date of Birth using the calendar picker.", "error");
+      showNotification("Please select your Date of Birth.", "error");
       regDob.focus();
       return;
     }
@@ -372,7 +372,7 @@
       return;
     }
 
-    // Attempt direct registration into MySQL via backend API
+    // Register voter via backend service
     try {
       const resp = await fetch("/api/register", {
         method: "POST",
@@ -453,7 +453,7 @@
       return;
     }
 
-    // 1. Attempt authentication against MySQL via backend API
+    // 1. Authenticate credentials via backend service
     try {
       const resp = await fetch("/api/login", {
         method: "POST",
@@ -734,7 +734,7 @@
       return;
     }
 
-    // 1. Send vote directly to MySQL backend API
+    // 1. Record vote via backend service
     try {
       const resp = await fetch("/api/vote", {
         method: "POST",
@@ -962,7 +962,7 @@
     const candidate = voter.votedFor ? appState.candidates.find(c => String(c.id) === String(voter.votedFor)) : null;
     const candidateName = candidate ? candidate.name : "Candidate";
 
-    if (!confirm("Are you sure you want to delete and reset the ballot for Voter ID " + voter.id + " (" + voter.fullName + ")?\n\nThis will remove the vote, decrease " + candidateName + "'s vote count by 1, and allow this student to vote again.")) {
+    if (!confirm("Confirm Ballot Revocation:\n\nAre you sure you want to cancel the recorded ballot for " + voter.fullName + " (Voter ID: " + voter.id + ")?\n\nThis will remove the vote from the ballot box and allow the student to vote again.")) {
       return;
     }
 
@@ -1008,7 +1008,7 @@
     renderLiveResults();
     updateHomeStats();
 
-    showNotification("Ballot for " + voter.fullName + " (ID: " + voterId + ") deleted. " + candidateName + "'s tally decreased by 1. Voter may now vote again.", "success");
+    showNotification("Ballot for " + voter.fullName + " (Voter ID: " + voterId + ") has been revoked. The student is now eligible to vote again.", "success");
   };
 
   // Admin Single Ballot Deletion by Vote ID
@@ -1069,7 +1069,7 @@
   };
 
   window.resetElectionVotes = async function () {
-    if (!confirm("DANGER: Are you sure you want to reset ALL ballot tallies to 0? All registered voters will be marked as not having voted.")) {
+    if (!confirm("Election Tallies Reset Confirmation:\n\nAre you sure you want to reset all ballot tallies to zero? All recorded votes will be cleared and registered voters will be eligible to vote again.")) {
       return;
     }
 
@@ -1146,9 +1146,9 @@
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
     const dlAnchorElem = document.createElement("a");
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", "campus_voting_system_export.json");
+    dlAnchorElem.setAttribute("download", "campus_election_audit_report.json");
     dlAnchorElem.click();
-    showNotification("Election database exported as campus_voting_system_export.json", "success");
+    showNotification("Official election audit records exported successfully.", "success");
   };
 
   // --- 11. HOME STATS SUMMARY & WELCOME BANNER ---

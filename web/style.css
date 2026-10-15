@@ -1,7 +1,6 @@
 /* ==========================================================================
    Campus Election Commission - Online Voting System Web Portal
    Theme: College Electoral Commission (Navy, Royal Blue, Emerald Green)
-   Author: MCA Academic Student Project (Phase 3)
    ========================================================================== */
 
 :root {
@@ -40,6 +39,10 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -123,6 +126,12 @@ body {
   border-radius: 50%;
   background: var(--success-green);
   box-shadow: 0 0 8px var(--success-green);
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live {
+  0%, 100% { box-shadow: 0 0 4px var(--success-green); }
+  50% { box-shadow: 0 0 12px var(--success-green), 0 0 20px rgba(5, 150, 105, 0.3); }
 }
 
 /* --------------------------------------------------------------------------
@@ -1013,42 +1022,7 @@ body {
   gap: 12px;
 }
 
-/* JSON Tabs & Body */
-.modal-tabs {
-  display: flex;
-  background: #f1f5f9;
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 16px;
-  gap: 4px;
-  overflow-x: auto;
-}
 
-.tab-btn {
-  background: none;
-  border: none;
-  padding: 10px 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-
-.tab-btn.active {
-  color: var(--accent-blue);
-  border-bottom-color: var(--accent-blue);
-  background: var(--surface-white);
-}
-
-.json-viewer-body {
-  max-height: 380px;
-  overflow-y: auto;
-  background: #0f172a;
-  color: #38bdf8;
-  font-family: "Consolas", "Monaco", "Courier New", monospace;
-  font-size: 0.88rem;
-  padding: 16px;
-}
 
 /* --------------------------------------------------------------------------
    User Voted Receipt & Card Highlight

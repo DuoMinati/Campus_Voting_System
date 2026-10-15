@@ -1,8 +1,9 @@
 @echo off
-title Online Voting System - Phase 3 Web Portal
+title Campus Election Commission - Web Portal
 cls
 echo ========================================================
-echo   Starting Phase 3 Web Portal (HTTP Server + Browser)
+echo   CAMPUS ELECTION COMMISSION - WEB PORTAL
+echo   Starting Local HTTP Server on Port 8080...
 echo ========================================================
 echo.
 java -cp "bin;lib/*" Main --web

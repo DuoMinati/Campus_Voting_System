@@ -250,7 +250,6 @@ public class EmbeddedWebServer {
                 sb.append("\"dob\":\"").append(escapeJson(v.getDob())).append("\",");
                 sb.append("\"age\":").append(v.getAge()).append(",");
                 sb.append("\"gender\":\"").append(escapeJson(v.getGender())).append("\",");
-                sb.append("\"password\":\"").append(escapeJson(v.getPassword())).append("\",");
                 sb.append("\"hasVoted\":").append(v.isHasVoted()).append(",");
 
                 // Lookup whom this voter voted for if hasVoted is true
@@ -286,7 +285,7 @@ public class EmbeddedWebServer {
             sb.append("],");
 
             // Admin object
-            sb.append("\"admin\":{\"username\":\"admin\",\"password\":\"admin123\"}");
+            sb.append("\"admin\":{\"username\":\"admin\"}");
             sb.append("}");
 
             sendJson(exchange, 200, sb.toString());
@@ -323,7 +322,22 @@ public class EmbeddedWebServer {
                 return;
             }
 
-            model.Voter voter = new model.Voter(fullName, voterId, email, password, dob, 21, gender);
+            // Calculate age from Date of Birth
+            int calculatedAge = 18;
+            if (dob != null && !dob.trim().isEmpty()) {
+                try {
+                    java.time.LocalDate birthDate = java.time.LocalDate.parse(dob.trim());
+                    calculatedAge = java.time.Period.between(birthDate, java.time.LocalDate.now()).getYears();
+                    if (calculatedAge < 18) {
+                        sendJson(exchange, 400, "{\"success\":false,\"message\":\"Voters must be at least 18 years of age to register.\"}");
+                        return;
+                    }
+                } catch (Exception e) {
+                    calculatedAge = 18;
+                }
+            }
+
+            model.Voter voter = new model.Voter(fullName, voterId, email, password, dob, calculatedAge, gender);
             boolean inserted = voterDAO.registerVoter(voter);
 
             if (inserted) {

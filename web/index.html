@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Campus Election Commission | Online Voting System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Google Fonts for crisp human typography -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -18,7 +19,7 @@
         <div class="seal-icon">🗳️</div>
         <div>
           <h1 class="portal-title">CAMPUS ELECTION COMMISSION</h1>
-          <p class="portal-subtitle">Departmental Student Council Election Portal &bull; Official Digital Voting System</p>
+          <p class="portal-subtitle">Official Student Council Digital Voting Portal &bull; Secure, Verifiable &amp; Transparent</p>
         </div>
       </div>
       <div class="session-badge" id="sessionBadge">
@@ -117,7 +118,7 @@
           </div>
 
           <div class="form-group">
-            <label for="regVoterId">Voter ID (Strict 6 Digits) <span class="required">*</span></label>
+            <label for="regVoterId">Voter ID (6 Digits) <span class="required">*</span></label>
             <input 
               type="text" 
               id="regVoterId" 
@@ -128,13 +129,13 @@
               autocomplete="off"
               required 
             />
-            <small class="field-hint">Only numbers allowed (0-9). Exactly 6 digits. Alphabets and symbols are blocked.</small>
+            <small class="field-hint">Enter your unique 6-digit numeric Voter ID (e.g. 101001).</small>
           </div>
 
           <div class="form-group">
             <label for="regDob">Date of Birth <span class="required">*</span></label>
             <input type="date" id="regDob" name="dob" required />
-            <small class="field-hint">Select your birth date from the interactive calendar.</small>
+            <small class="field-hint">Select your date of birth.</small>
           </div>
 
           <div class="form-group">
@@ -185,7 +186,7 @@
               placeholder="Enter your 6-digit Voter ID" 
               required 
             />
-            <small class="field-hint" id="loginUserIdHint">Enter the 6-digit numeric ID generated during registration.</small>
+            <small class="field-hint" id="loginUserIdHint">Enter the 6-digit Voter ID you registered with.</small>
           </div>
 
           <div class="form-group">
@@ -278,7 +279,7 @@
           <h2>Election Commission Administration</h2>
           <p>Manage candidate nominations, inspect voter participation, and oversee election operations.</p>
         </div>
-        <div class="admin-badge">Officer Mode</div>
+        <div class="admin-badge">Administrator Access</div>
       </div>
 
       <div class="admin-grid">
@@ -308,7 +309,7 @@
           <h3>Electoral Registry Controls</h3>
           <p class="card-caption">Perform administrative maintenance on votes and candidate slates.</p>
           <div class="admin-actions">
-            <button class="btn-secondary btn-block" onclick="exportDataAsJSON()">📥 Export Complete Election Data (JSON)</button>
+            <button class="btn-secondary btn-block" onclick="exportDataAsJSON()">📥 Export Official Election Audit Log</button>
             <button class="btn-danger btn-block" onclick="resetElectionVotes()">⚠️ Reset All Ballot Tallies</button>
           </div>
           <div class="admin-notice">
@@ -320,7 +321,7 @@
       <!-- Voter Audit Table -->
       <div class="voter-audit-card">
         <h3>Voter Roster & Participation Audit</h3>
-        <p class="card-caption">Inspect voter registration status and whether a ballot has been cast. Admin can delete a voter account or reset an individual ballot.</p>
+        <p class="card-caption">Review registered student details and active participation status.</p>
         <div class="table-responsive">
           <table class="results-table">
             <thead>
@@ -342,7 +343,7 @@
       <!-- Cast Ballots Audit & Single Ballot Deletion Table -->
       <div class="voter-audit-card admin-subcard">
         <h3>Ballot Box Audit & Individual Ballot Deletion</h3>
-        <p class="card-caption">Inspect and manage individual ballots cast into the electronic ballot box. Admin can delete any single ballot, which decrements the candidate's vote count by 1 and re-enables voting for that voter.</p>
+        <p class="card-caption">Review cast ballots with recorded timestamps. Authorized officers can cancel a ballot to allow the student to vote again.</p>
         <div class="table-responsive">
           <table class="results-table">
             <thead>
